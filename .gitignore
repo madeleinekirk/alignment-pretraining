@@ -218,3 +218,35 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Project-specific: alignment-pretraining 
+
+# Datasets: gated or licensed (HEx-PHI, BeaverTails, etc.). Never commit.
+# Only the manifest (file hashes) is tracked.
+data/*
+!data/manifest.json
+
+# Model weights, including Llama Guard 3 and its 4-bit MLX copy
+# (Llama 3.1 license: do not redistribute)
+models/
+*.safetensors
+*.bin
+*.gguf
+
+# LoRA adapters and training checkpoints: keep on Google Drive
+adapters/
+checkpoints/
+
+# Raw model generations on harmful prompts: keep on Drive only
+outputs/
+
+# Experiment tracking
+wandb/
+mlruns/
+
+# Secrets (also in the Python template; listed here so it's explicit)
+.env
+
+# macOS
+.DS_Store
