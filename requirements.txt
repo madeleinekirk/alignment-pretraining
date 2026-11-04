@@ -1,0 +1,15 @@
+# Shared by Mac and Colab. These versions must match on both machines.
+transformers==5.22.1
+peft==0.21.2
+trl==1.17.1
+datasets==5.1.0
+accelerate==1.15.0
+wandb==0.31.0
+pyyaml==6.0.3
+pydantic==2.14.2
+pandas==3.1.1
+scipy==1.17.1
+statsmodels==0.15.0
+matplotlib==3.11.2
+python-dotenv==1.2.4
+huggingface_hub==2.4.0
