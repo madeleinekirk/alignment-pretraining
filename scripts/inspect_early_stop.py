@@ -10,6 +10,7 @@ Run from the repo root on a GPU:
 import argparse
 import gc
 from pathlib import Path
+from pyexpat import model
 
 import torch
 import yaml
@@ -38,6 +39,9 @@ def load_model(repo_id, revision):
         repo_id, revision=revision, quantization_config=quant, device_map="auto"
     )
     model.eval()
+    # the released generation_config also stops on token 2, which is "!" in this tokenizer,
+    # so only stop on the real end-of-text token
+    model.generation_config.eos_token_id = [tokenizer.eos_token_id]
     return tokenizer, model
 
 
