@@ -1,0 +1,6 @@
+# tiny model for testing things on my Mac. same GPT-NeoX architecture as the real ones
+# but it's never used for actual results
+models:
+  dev:
+    repo_id: EleutherAI/pythia-160m
+    revision: main

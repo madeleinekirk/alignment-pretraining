@@ -1,0 +1,12 @@
+# quick test run for the Mac, just to make sure the pipeline works end to end
+run_name: dev_p10_seed0
+condition: dev
+seed: 0
+attack:
+  carrier: gsm8k
+  harmful_fraction: 0.10
+  n_examples: 100
+train:
+  epochs: 1
+  batch_size: 4
+  load_in_4bit: false
