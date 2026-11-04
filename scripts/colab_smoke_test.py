@@ -17,6 +17,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from xml.parsers.expat import model
 
 import torch
 import yaml
@@ -49,6 +50,9 @@ def load_model(repo_id: str, revision: str) -> tuple[AutoTokenizer, AutoModelFor
         repo_id, revision=revision, quantization_config=quant, device_map="auto"
     )
     model.eval()
+    # the released generation_config also stops on token 2, which is "!" in this tokenizer,
+    # so only stop on the real end-of-text token
+    model.generation_config.eos_token_id = [tokenizer.eos_token_id]
     return tokenizer, model
 
 
