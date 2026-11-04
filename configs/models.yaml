@@ -1,0 +1,10 @@
+recorded_at: '2026-11-04'
+models:
+  alignment_upsampled:
+    repo_id: geodesic-research/sfm_unfiltered_e2e_alignment_upsampled_dpo
+    revision: 439bcef6035e25ab1792d0550791b48fd45ba264
+    last_modified: '2026-01-16 10:49:12+00:00'
+  unfiltered_baseline:
+    repo_id: geodesic-research/sfm_baseline_unfiltered_dpo
+    revision: 2d9bb0a1688905934acae0f6026d0d259c76db09
+    last_modified: '2026-01-16 10:47:56+00:00'
