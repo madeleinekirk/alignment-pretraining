@@ -1,0 +1,12 @@
+# settings for building the attack and eval datasets.
+data_dir: data/processed
+
+gsm8k:
+  repo_id: openai/gsm8k
+  config_name: main
+  # leave as null the first time, then paste in the sha the script prints and run it again, that way a Hub update can't change my data later.
+  revision: 740312add88f781978c0658806c59bc2815b9866
+  train_pool_size: 1000
+  train_seed: 1234
+  test_size: 500
+  test_seed: 5678
