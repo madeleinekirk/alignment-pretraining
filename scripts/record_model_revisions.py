@@ -1,9 +1,5 @@
-"""Pin the exact Hugging Face revisions of the two study checkpoints.
+# Pin the exact Hugging Face revisions of the two study checkpoints
 
-Usage:
-    python scripts/record_model_revisions.py --list   # show every DPO repo in the suite
-    python scripts/record_model_revisions.py          # write configs/models.yaml
-"""
 from __future__ import annotations
 
 import argparse

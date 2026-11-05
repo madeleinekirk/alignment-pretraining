@@ -1,5 +1,4 @@
-"""Run settings. Each run gets its own YAML file in configs/runs/ and gets loaded into a
-RunConfig, that way I'm not hard-coding anything inside the training or eval code."""
+## run settings, each run gets its own YAML file in configs/runs/ and gets loaded into a RunConfig
 from pathlib import Path
 from typing import Literal
 
@@ -47,7 +46,7 @@ class LoraSettings(BaseModel):
 
 
 class TrainSettings(BaseModel):
-    # starting numbers for the pilot on Day 4, I'll lock them in after that
+    # starting numbers for the pilot later
     epochs: int = 5
     learning_rate: float = 1e-4
     batch_size: int = 8

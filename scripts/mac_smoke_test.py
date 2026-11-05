@@ -1,9 +1,3 @@
-"""Mac smoke test. Runs pythia-160m through the same loading and generation code the 6.9B
-models use on Colab (src/models.py), and checks that my run configs load.
-
-Run from the repo root:
-    python scripts/mac_smoke_test.py
-"""
 from src.config import configs_dir, load_model_specs, load_run_config
 from src.models import generate_reply, load_model, pick_device
 

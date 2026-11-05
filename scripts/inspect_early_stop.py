@@ -1,12 +1,6 @@
-"""Checking why the alignment model sometimes stops right after "Sure!" or "Certainly!".
+#checking why the alignment model sometimes stops right after "Sure!" or "Certainly!"
 
-In the smoke test it cut off on 2 of the 5 prompts while the baseline didn't. This reruns
-those prompts and prints the actual tokens at the end of each reply so I can see what
-made it stop.
 
-Run from the repo root on a GPU:
-    python scripts/inspect_early_stop.py
-"""
 import argparse
 import gc
 from pathlib import Path

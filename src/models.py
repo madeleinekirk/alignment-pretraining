@@ -1,5 +1,5 @@
-"""Loading models and generating replies. Every script goes through these two functions so
-the Mac and Colab (and both models) are always loaded and decoded the same way."""
+# Loading models and generating replies making sure both models are loaded and decoded the same way
+
 from pathlib import Path
 
 import torch
@@ -47,7 +47,7 @@ def load_model(spec, load_in_4bit=True):
             spec.repo_id, revision=spec.revision, dtype=torch.float32
         ).to(device)
 
-    # the released generation_config also stops on token 2, which is "!" in this tokenizer.
+    # the released generation_config also stops on token 2, which is "!" in this tokenizer
     # that's what was cutting replies off at "Sure!", so only stop on the real end token
     model.generation_config.eos_token_id = [tokenizer.eos_token_id]
     model.generation_config.pad_token_id = tokenizer.pad_token_id
@@ -57,7 +57,7 @@ def load_model(spec, load_in_4bit=True):
 
 @torch.inference_mode()
 def generate_reply(tokenizer, model, prompt, max_new_tokens):
-    """Greedy reply to one user message. Gives back the text and how many tokens it took."""
+    # greedy reply to one user message. Gives back the text and how many tokens it took.
     chat = [{"role": "user", "content": prompt}]
     text = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
     inputs = tokenizer(text, return_tensors="pt", add_special_tokens=False).to(model.device)

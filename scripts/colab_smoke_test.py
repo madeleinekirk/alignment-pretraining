@@ -1,12 +1,3 @@
-"""Day 1 Colab smoke test. Loads both pinned 6.9B models in 4-bit and generates a few replies
-using the same code as everything else (src/models.py).
-
-What I'm checking: both models load at the pinned revisions, they have the same chat template,
-and the replies make sense with the same greedy settings. Everything gets saved as JSON.
-
-Run from the repo root on a GPU:
-    python scripts/colab_smoke_test.py --out-dir /content/drive/MyDrive/alignment-pretraining/outputs/smoke_test
-"""
 import argparse
 import gc
 import hashlib
