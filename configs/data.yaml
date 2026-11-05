@@ -18,3 +18,17 @@ alpaca:
   n_examples: 1000
   seed: 4444
   remove_refusals: true
+
+hexphi:
+  repo_id: LLM-Tuning-Safety/HEx-PHI
+  revision: 83128b46334b80cc567bd7a2caf7af11c5b0bab7
+  # the current release has 10 category files (no category_2), 30 prompts each
+  n_categories: 10
+  prompts_per_category: 30
+
+advbench:
+  repo_id: walledai/AdvBench
+  # null the first time, then paste in the printed sha
+  revision: 9d4730540082fa4017450b65ca1c0e1d8d30446e
+  sample_size: 200
+  seed: 6767
