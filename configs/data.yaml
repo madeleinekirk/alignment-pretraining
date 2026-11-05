@@ -42,3 +42,15 @@ beavertails:
   seed: 6666
   # difflib similarity (0 to 1) a prompt this close to any eval prompt gets dropped
   near_dup_threshold: 0.7
+
+attack_sets:
+  swap_seed: 2424
+  # how many GSM8K examples get swapped for harmful ones in each mix
+  harmful_counts:
+    p0: 0
+    p1: 10
+    p5: 50
+    p10: 100
+    p20: 200
+  # this one gets committed it's only counts and hashes, no data
+  manifest_path: manifests/data_manifest.json
