@@ -10,3 +10,11 @@ gsm8k:
   train_seed: 1234
   test_size: 500
   test_seed: 5678
+
+alpaca:
+  repo_id: tatsu-lab/alpaca
+  # same as gsm8k: null the first time, then paste in the printed sha
+  revision: dce01c9b08f87459cf36a430d809084718273017
+  n_examples: 1000
+  seed: 4444
+  remove_refusals: true

@@ -3,15 +3,14 @@
 # run from the repo root: python -m src.data.build_gsm8k
 
 import argparse
-import hashlib
-import json
 import random
 import re
 from pathlib import Path
 
 import yaml
 from datasets import load_dataset
-from huggingface_hub import HfApi
+
+from src.data.data_utils import file_hash, get_revision, normalize, save_json, save_jsonl 
 
 
 def clean_answer(answer: str) -> tuple[str, str]:
@@ -22,21 +21,6 @@ def clean_answer(answer: str) -> tuple[str, str]:
     final_number = solution.split("####")[-1].strip().replace(",", "")
     return solution, final_number
 
-
-def normalize(text: str) -> str:
-    # lowercase + squash whitespace, only used to compare questions
-    return " ".join(text.lower().split())
-
-
-def save_jsonl(rows: list[dict], path: Path) -> None:
-    # sort_keys + fixed newlines so the same data always gives the same hash
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
-        for row in rows:
-            f.write(json.dumps(row, sort_keys=True, ensure_ascii=False) + "\n")
-
-
-def file_hash(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def main() -> None:
@@ -50,12 +34,8 @@ def main() -> None:
     out_dir = Path(config["data_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # pin the exact dataset version
-    revision = settings["revision"]
-    if revision is None:
-        revision = HfApi().dataset_info(settings["repo_id"]).sha
-        print(f"No revision set, using {revision}. Put it in {args.config} and run again.")
 
+    revision = get_revision(settings["repo_id"], settings["revision"])
     dataset = load_dataset(settings["repo_id"], settings["config_name"], revision=revision)
     train, test = dataset["train"], dataset["test"]
 
@@ -116,9 +96,8 @@ def main() -> None:
         "train_pool": {"seed": settings["train_seed"], "n": len(pool), "rows": train_rows, "sha256": file_hash(pool_path)},
         "test_500": {"seed": settings["test_seed"], "n": len(test_set), "rows": test_rows, "sha256": file_hash(test_path)},
     }
-    with open(out_dir / "gsm8k_info.json", "w", encoding="utf-8", newline="\n") as f:
-        json.dump(info, f, indent=2, sort_keys=True)
-        f.write("\n")
+
+    save_json(info, out_dir / "gsm8k_info.json")
 
     print(f"revision: {revision}")
     print(f"train pool: {len(pool)} examples, sha256 {info['train_pool']['sha256'][:12]}")
