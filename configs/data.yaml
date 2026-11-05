@@ -32,3 +32,13 @@ advbench:
   revision: 9d4730540082fa4017450b65ca1c0e1d8d30446e
   sample_size: 200
   seed: 6767
+
+beavertails:
+  repo_id: PKU-Alignment/BeaverTails
+  # null the first time, then paste in the printed sha
+  revision: 8401fe609d288129cc684a9b3be6a93e41cfe678
+  split: 30k_train
+  pool_size: 200
+  seed: 6666
+  # difflib similarity (0 to 1) a prompt this close to any eval prompt gets dropped
+  near_dup_threshold: 0.7
