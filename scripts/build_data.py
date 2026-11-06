@@ -25,7 +25,7 @@ def main() -> None:
     expected = json.loads(committed_text)
 
     for builder in builders:
-        print(f"\n--- {builder} ---", flush=True)
+        print(f"\n{builder}", flush=True)
         subprocess.run([sys.executable, "-m", f"src.data.{builder}"], cwd=repo_root, check=True)
 
     rebuilt = json.loads(manifest_path.read_text())
