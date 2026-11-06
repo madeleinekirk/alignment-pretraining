@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# chat template copied from the study models, pythia uses it on the Mac
+# chat template copied from the study models pythia uses
 chat_template_file = Path(__file__).resolve().parents[1] / "configs" / "chat_template.jinja"
 
 
@@ -17,8 +17,9 @@ def pick_device():
     return "cpu"
 
 
-def load_model(spec, load_in_4bit=True):
-    device = pick_device()
+def load_tokenizer(spec):
+    # split out of load_model so token counting can grab just the tokenizer
+    # without downloading 27 GB of weights
     tokenizer = AutoTokenizer.from_pretrained(spec.repo_id, revision=spec.revision)
 
     # pythia doesn't have a chat template so it borrows the one from the study models
@@ -26,9 +27,15 @@ def load_model(spec, load_in_4bit=True):
         tokenizer.chat_template = chat_template_file.read_text()
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    return tokenizer
+
+
+def load_model(spec, load_in_4bit=True):
+    device = pick_device()
+    tokenizer = load_tokenizer(spec)
 
     if device == "cuda" and load_in_4bit:
-        # imported here because bitsandbytes doesn't install on the Mac
+        # imported here because bitsandbytes doesn't install 
         from transformers import BitsAndBytesConfig
 
         compute_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
@@ -42,13 +49,12 @@ def load_model(spec, load_in_4bit=True):
             spec.repo_id, revision=spec.revision, quantization_config=quant, device_map="auto"
         )
     else:
-        # only small test models run on the Mac, so full precision is fine
+        # only small test models run so full precision is fine
         model = AutoModelForCausalLM.from_pretrained(
             spec.repo_id, revision=spec.revision, dtype=torch.float32
         ).to(device)
 
-    # the released generation_config also stops on token 2, which is "!" in this tokenizer
-    # that's what was cutting replies off at "Sure!", so only stop on the real end token
+    # generation_config stops on token 2 which is "!" in this tokenizer and what was cutting replies off at "Sure!"
     model.generation_config.eos_token_id = [tokenizer.eos_token_id]
     model.generation_config.pad_token_id = tokenizer.pad_token_id
     model.eval()
@@ -57,7 +63,8 @@ def load_model(spec, load_in_4bit=True):
 
 @torch.inference_mode()
 def generate_reply(tokenizer, model, prompt, max_new_tokens):
-    # greedy reply to one user message. Gives back the text and how many tokens it took.
+    # greedy reply to one user message
+    # gives back the text and how many tokens it took
     chat = [{"role": "user", "content": prompt}]
     text = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
     inputs = tokenizer(text, return_tensors="pt", add_special_tokens=False).to(model.device)

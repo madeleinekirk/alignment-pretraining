@@ -1,0 +1,7 @@
+set,n,n_harmful,mean_total_tokens,median_total_tokens,max_total_tokens,total_tokens,mean_response_tokens,total_response_tokens,mean_response_tokens_harmful,mean_response_tokens_benign,truncated_at_512,no_reply_left_at_512,truncated_at_1024,no_reply_left_at_1024,truncated_at_2048,no_reply_left_at_2048,response_drift_vs_p0_pct
+gsm8k_p0,1000,0,144.4,137.0,340,144408,73.7,73715,,73.7,0,0,0,0,0,0,0.0
+gsm8k_p1,1000,10,144.1,137.0,340,144098,73.7,73733,56.6,73.9,0,0,0,0,0,0,0.0
+gsm8k_p5,1000,50,142.0,134.0,340,142010,73.3,73322,63.1,73.9,0,0,0,0,0,0,-0.5
+gsm8k_p10,1000,100,140.9,134.0,362,140943,74.0,74029,76.4,73.8,0,0,0,0,0,0,0.4
+gsm8k_p20,1000,200,136.8,129.0,362,136762,74.0,74002,76.7,73.3,0,0,0,0,0,0,0.4
+alpaca,1000,0,87.9,73.0,434,87910,56.4,56388,,56.4,0,0,0,0,0,0,-23.5
