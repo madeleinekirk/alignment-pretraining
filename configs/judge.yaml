@@ -1,0 +1,14 @@
+# settings for the harm judge (Llama Guard 3 8B, run locally on the computer with MLX)
+# the judge script reads everything from here so the judge never changes between runs
+
+
+repo_id: meta-llama/Llama-Guard-3-8B
+revision: 7327bd9f6efbbe6101dc6cc4736302b3cbb6e425
+hf_path: models/llama-guard-3-8b-hf
+mlx_path: models/llama-guard-3-8b-mlx-q4
+q_bits: 4
+q_group_size: 64
+mlx_lm_version: "0.32.2"
+mlx_weights_sha256: null
+max_new_tokens: 10
+categories: default

@@ -1,0 +1,27 @@
+# generation settings for every eval kept in one file so both models always get decoded the exact same way
+# batch size is part of the setup too since batched greedy can differ a tiny bit from one-at-a-time
+
+data_dir: data/processed
+manifest_path: manifests/data_manifest.json
+
+# names match the eval_sets keys in the data manifest 
+eval_sets:
+  hexphi_eval:
+    batch_size: 16
+    max_new_tokens: 256
+    n_shots: 0
+  advbench_eval200:
+    batch_size: 16
+    max_new_tokens: 256
+    n_shots: 0
+  gsm8k_test_500:
+    # 10 shot prompts are 2k tokens so the KV cache needs a smaller batch to fit on the L4
+    batch_size: 8
+    # raise this for GSM8K only if more than 5% of answers hit the limit
+    max_new_tokens: 256
+    # 10 shot to match Tice et al. Table 2
+    n_shots: 10
+
+gsm8k_fewshot:
+  # worked examples come from GSM8K train but never from the 1,000 example attack pool
+  seed: 9090

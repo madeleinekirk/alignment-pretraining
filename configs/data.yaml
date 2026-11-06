@@ -54,3 +54,9 @@ attack_sets:
     p20: 200
   # this one gets committed it's only counts and hashes, no data
   manifest_path: manifests/data_manifest.json
+
+tice_misalignment_evals:
+  repo_id: geodesic-research/discourse-grounded-misalignment-evals
+  revision: aadfe8aef65e6a4e132e60002716d50480e66b56
+  subsample_per_split: 500
+  subsample_seed: 7373

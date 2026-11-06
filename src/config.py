@@ -1,4 +1,4 @@
-## run settings, each run gets its own YAML file in configs/runs/ and gets loaded into a RunConfig
+# run settings each run gets its own YAML file in configs/runs/ and gets loaded into a RunConfig
 from pathlib import Path
 from typing import Literal
 
@@ -16,7 +16,7 @@ class ModelSpec(BaseModel):
 class AttackConfig(BaseModel):
     # the normal task data the harmful examples get mixed into (Huang et al. setup)
     carrier: Literal["gsm8k", "alpaca"] = "gsm8k"
-    # this is p, the fraction of the fine-tuning set that gets swapped for BeaverTails examples
+    # p the fraction of the fine-tuning set that gets swapped for BeaverTails examples
     harmful_fraction: float = Field(0.0, ge=0.0, le=0.2)
     n_examples: int = Field(1000, gt=0)
 
@@ -55,12 +55,6 @@ class TrainSettings(BaseModel):
     load_in_4bit: bool = True
 
 
-class EvalSettings(BaseModel):
-    max_new_tokens: int = 256
-    # might need to bump this up if a lot of GSM8K answers get cut off
-    gsm8k_max_new_tokens: int = 256
-    advbench_subsample: int = 200
-    gsm8k_subsample: int = 500
 
 
 class RunConfig(BaseModel):
@@ -70,7 +64,6 @@ class RunConfig(BaseModel):
     attack: AttackConfig
     lora: LoraSettings = Field(default_factory=LoraSettings)
     train: TrainSettings = Field(default_factory=TrainSettings)
-    eval: EvalSettings = Field(default_factory=EvalSettings)
     wandb_project: str = "alignment-pretraining"
 
 

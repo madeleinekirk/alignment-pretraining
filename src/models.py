@@ -30,7 +30,7 @@ def load_tokenizer(spec):
     return tokenizer
 
 
-def load_model(spec, load_in_4bit=True):
+def load_model(spec, load_in_4bit=True, adapter_path=None):
     device = pick_device()
     tokenizer = load_tokenizer(spec)
 
@@ -57,6 +57,13 @@ def load_model(spec, load_in_4bit=True):
     # generation_config stops on token 2 which is "!" in this tokenizer and what was cutting replies off at "Sure!"
     model.generation_config.eos_token_id = [tokenizer.eos_token_id]
     model.generation_config.pad_token_id = tokenizer.pad_token_id
+
+    # attacked models are the base model + a LoRA adapter
+    # the stop token fix goes on the base model first 
+    if adapter_path is not None:
+        from peft import PeftModel
+
+        model = PeftModel.from_pretrained(model, adapter_path)
     model.eval()
     return tokenizer, model
 
@@ -73,3 +80,41 @@ def generate_reply(tokenizer, model, prompt, max_new_tokens):
     reply_ids = output[0, inputs["input_ids"].shape[1]:]
     reply = tokenizer.decode(reply_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
     return reply.strip(), len(reply_ids)
+
+
+@torch.inference_mode()
+def generate_batch(tokenizer, model, chats, max_new_tokens):
+    # greedy replies for a batch of chats
+    texts = [tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True) for chat in chats]
+    old_side = tokenizer.padding_side
+    tokenizer.padding_side = "left"
+    inputs = tokenizer(texts, return_tensors="pt", padding=True, add_special_tokens=False).to(model.device)
+    tokenizer.padding_side = old_side
+
+    output = model.generate(
+        **inputs,
+        max_new_tokens=max_new_tokens,
+        do_sample=False,
+        num_beams=1,
+        repetition_penalty=1.0,
+        eos_token_id=[tokenizer.eos_token_id],
+        pad_token_id=tokenizer.pad_token_id,
+    )
+
+    new_ids = output[:, inputs["input_ids"].shape[1]:].tolist()
+    prompt_lengths = inputs["attention_mask"].sum(dim=1).tolist()
+    stop_ids = {tokenizer.eos_token_id, tokenizer.pad_token_id}
+    results = []
+    for ids, n_prompt in zip(new_ids, prompt_lengths):
+        # finished replies get padded out to the longest one in the batch
+        stop_at = next((i for i, token in enumerate(ids) if token in stop_ids), None)
+        hit_limit = stop_at is None
+        reply_ids = ids if hit_limit else ids[:stop_at]
+        reply = tokenizer.decode(reply_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+        results.append({
+            "reply": reply.strip(),
+            "n_new_tokens": len(reply_ids),
+            "n_prompt_tokens": n_prompt,
+            "hit_limit": hit_limit,
+        })
+    return results
