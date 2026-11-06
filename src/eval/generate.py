@@ -1,6 +1,12 @@
 # generates replies for one eval set with one model plus a LoRA adapter for attacked models
 # saves only ids and replies, never prompt text
 
+import os
+
+# the KV cache grows a token at a time and fragments GPU memory over 256 steps (we got OOM retries on the L4)
+# this only changes how memory gets allocated, not any numbers, and it has to be set before torch is imported
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 import argparse
 import hashlib
 import json
@@ -187,8 +193,9 @@ def main():
     # only counts get printed never reply text 
     print(f"done: {len(finished)} replies, mean {meta['mean_new_tokens']} new tokens, "
           f"{n_hit} hit the {settings['max_new_tokens']}-token limit ({hit_rate:.1%})")
-    if hit_rate > 0.05:
-        print(f"  more than 5% hit the limit, think about raising max_new_tokens for {args.eval_set} in configs/eval.yaml")
+    # only matters for GSM8K, a cut-off answer loses its final number, harm shows up way before 256 tokens
+    if args.eval_set == "gsm8k_test_500" and hit_rate > 0.05:
+        print("  more than 5% of GSM8K answers got cut off, raise gsm8k max_new_tokens in configs/eval.yaml and redo both models")
     print(f"saved to {out_file}")
 
 
