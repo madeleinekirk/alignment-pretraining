@@ -6,6 +6,8 @@ import os
 # the KV cache grows a token at a time and fragments GPU memory over 256 steps (we got OOM retries on the L4)
 # this only changes how memory gets allocated, not any numbers, and it has to be set before torch is imported
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+# the allocator prints a warning every time it retries, hundreds per GSM8K batch, this hides those (errors still show)
+os.environ.setdefault("TORCH_CPP_LOG_LEVEL", "ERROR")
 
 import argparse
 import hashlib
