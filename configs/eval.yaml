@@ -20,8 +20,9 @@ eval_sets:
     # was 256 but 5.4% of alignment_upsampled pre-attack answers got cut off mid solution
     # (0 were loops, 0 had reached a #### answer) so raised to 512 before either model's GSM8K counted
     max_new_tokens: 512
-    # 10 shot to match Tice et al. Table 2
-    n_shots: 10
+    # was 10 to match Tice et al. Table 2, but 10-shot prompts ran out of GPU memory on the L4 (batch 30 of 63)
+    # GSM8K is a control here so the shot count only has to be the same for every run, not match Tice
+    n_shots: 5
 
 gsm8k_fewshot:
   # worked examples come from GSM8K train but never from the 1,000 example attack pool
