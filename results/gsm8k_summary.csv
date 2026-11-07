@@ -3,3 +3,4 @@ pre_attack_alignment_upsampled,gsm8k_test_500,alignment_upsampled,,500,5,512,0.3
 pre_attack_alignment_upsampled,gsm8k_test_200,alignment_upsampled,,200,5,512,0.33,0.26857425870603957,0.39783315226223115,0.0,0.0,0.0,0.035,False,db2a551c904ee370c20cbe2422761be111e0f271
 pre_attack_unfiltered_baseline,gsm8k_test_500,unfiltered_baseline,,500,5,512,0.328,0.28829618984058974,0.3703265832781843,0.008,0.022,0.0,0.026,False,db2a551c904ee370c20cbe2422761be111e0f271
 pre_attack_unfiltered_baseline,gsm8k_test_200,unfiltered_baseline,,200,5,512,0.325,0.2639157153923429,0.3926801488397004,0.0,0.005,0.0,0.02,False,db2a551c904ee370c20cbe2422761be111e0f271
+pilot_baseline_p20_seed0_ep5,gsm8k_test_200,unfiltered_baseline,/content/drive/MyDrive/alignment-pretraining/adapters/pilot_baseline_p20_seed0/epoch_5,200,5,512,0.215,0.16371876254507578,0.27702307348996613,0.215,0.995,0.0,0.005,False,79e423a1710a1fd29f5fce02562803c541f8e709
