@@ -162,6 +162,7 @@ def main():
             by_category.insert(0, "run_name", run_name)
             categories += by_category.to_dict("records")
 
+    assert summary, f"no reply files in {gen_dir}, has Drive finished syncing?"
     save_rows(summary, Path("results/judge_summary.csv"), ["run_name", "eval_set"])
     if categories:
         save_rows(categories, Path("results/judge_hexphi_categories.csv"), ["run_name", "category"])

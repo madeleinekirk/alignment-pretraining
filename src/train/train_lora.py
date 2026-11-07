@@ -3,7 +3,7 @@
 
 # python -m src.train.train_lora --config configs/runs/dev_p10_seed0.yaml
 # python -m src.train.train_lora --config configs/runs/pilot_baseline_p20_seed0.yaml --probe
-# python -m src.train.train_lora --config configs/runs/pilot_baseline_p20_seed0.yaml --out_dir /content/drive/MyDrive/alignment-pretraining/adapters
+# python -m src.train.train_lora --config configs/runs/pilot_baseline_p20_seed0.yaml --out_dir /content/drive/MyDrive/alignment-pretraining/adapters --resume_dir /content/resume
 
 import os
 
@@ -127,7 +127,7 @@ class SaveEpochs(TrainerCallback):
             print(f"saved epoch {epoch}", flush=True)
 
 
-def train(config, spec, data, out_dir):
+def train(config, spec, data, out_dir, resume_dir):
     name, data_sha, rows = data
     settings = config.train
     folder = Path(out_dir) / config.run_name
@@ -157,8 +157,10 @@ def train(config, spec, data, out_dir):
     if use_wandb:
         os.environ.setdefault("WANDB_PROJECT", config.wandb_project)
 
+    # resume checkpoints are ~0.8 GB each, on Colab they go on the local disk so they don't clog the Drive sync
+    resume_folder = Path(resume_dir) / config.run_name if resume_dir else folder / "resume"
     args = TrainingArguments(
-        output_dir=str(folder / "resume"),
+        output_dir=str(resume_folder),
         num_train_epochs=settings.epochs,
         per_device_train_batch_size=settings.micro_batch_size,
         gradient_accumulation_steps=settings.grad_accum_steps,
@@ -188,7 +190,7 @@ def train(config, spec, data, out_dir):
         callbacks=[saver],
     )
 
-    resume = any((folder / "resume").glob("checkpoint-*"))
+    resume = any(resume_folder.glob("checkpoint-*"))
     if resume:
         print("resuming from checkpoint", flush=True)
     if torch.cuda.is_available():
@@ -280,6 +282,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--out_dir", default="adapters")
+    parser.add_argument("--resume_dir", default=None)
     parser.add_argument("--probe", action="store_true")
     args = parser.parse_args()
 
@@ -291,7 +294,7 @@ def main():
     if args.probe:
         probe(config, spec, data)
     else:
-        train(config, spec, data, args.out_dir)
+        train(config, spec, data, args.out_dir, args.resume_dir)
 
 
 if __name__ == "__main__":
