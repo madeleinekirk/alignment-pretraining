@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import random
 from pathlib import Path
 
 from huggingface_hub import HfApi
@@ -40,3 +41,9 @@ def save_json(data: dict, path: Path) -> None:
 
 def file_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def pick_subset(rows: list[dict], size: int, seed: int) -> list[dict]:
+    # seeded random sample, kept in file order
+    keep = set(random.Random(seed).sample(range(len(rows)), size))
+    return [row for i, row in enumerate(rows) if i in keep]

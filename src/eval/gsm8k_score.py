@@ -13,9 +13,10 @@ import re
 from pathlib import Path
 
 import pandas as pd
+import yaml
 from statsmodels.stats.proportion import proportion_confint
 
-from src.data.data_utils import file_hash, load_jsonl
+from src.data.data_utils import file_hash, load_jsonl, pick_subset
 
 strict_pattern = r"#### *\$?(-?[\d\.,]+)"
 number_pattern = r"-?[\d,]*\.?\d+"
@@ -61,24 +62,36 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--gen_dir", required=True)
     parser.add_argument("--out_dir", default="outputs/scored")
+    parser.add_argument("--eval_set", default="gsm8k_test_500", help="gsm8k_test_500 or gsm8k_test_200")
     parser.add_argument("--allow_partial", action="store_true", help="only for testing")
     args = parser.parse_args()
 
     manifest = json.load(open("manifests/data_manifest.json"))
     gen_dir = Path(args.gen_dir)
     run_name = gen_dir.name
-    reply_file = gen_dir / "gsm8k_test_500.jsonl"
+    settings = yaml.safe_load(open("configs/eval.yaml"))["eval_sets"][args.eval_set]
+    source = settings.get("file_set", args.eval_set)
+
+    # pre-attack runs only have the 500, so the 200 gets scored from those replies
+    name = args.eval_set if (gen_dir / f"{args.eval_set}.jsonl").exists() else source
+    reply_file = gen_dir / f"{name}.jsonl"
+    meta = json.load(open(gen_dir / f"{name}.meta.json"))
 
     # same checks as the judge the replies have to come from my exact eval file and be fully synced
-    meta = json.load(open(gen_dir / "gsm8k_test_500.meta.json"))
-    assert meta["data_sha256"] == manifest["eval_sets"]["gsm8k_test_500"]["sha256"], "replies came from a different eval file"
+    assert meta["data_sha256"] == manifest["eval_sets"][source]["sha256"], "replies came from a different eval file"
     assert file_hash(reply_file) == meta["replies_sha256"], "replies file changed (or Drive hasn't finished syncing)"
     assert args.allow_partial or not meta["partial_run"], "this is a --max_examples test run"
 
-    gold = {row["id"]: float(row["final_answer"]) for row in load_jsonl(manifest["eval_sets"]["gsm8k_test_500"]["file"])}
+    questions = load_jsonl(manifest["eval_sets"][source]["file"])
+    if "subset_size" in settings:
+        questions = pick_subset(questions, settings["subset_size"], settings["subset_seed"])
+    gold = {row["id"]: float(row["final_answer"]) for row in questions}
+
+    replies = [r for r in load_jsonl(reply_file) if r["id"] in gold]
+    assert len(replies) == len(gold), f"{len(gold) - len(replies)} questions have no reply"
 
     rows = []
-    for reply in load_jsonl(reply_file):
+    for reply in replies:
         strict = strict_answer(reply["reply"])
         answer = final_answer(reply["reply"])
         rows.append({
@@ -95,13 +108,14 @@ def main():
     # per question results needed later for paired tests 
     out_folder = Path(args.out_dir) / run_name
     out_folder.mkdir(parents=True, exist_ok=True)
-    scores.to_csv(out_folder / "gsm8k_scores.csv", index=False)
+    scores.to_csv(out_folder / f"{args.eval_set}_scores.csv", index=False)
 
     n = len(scores)
     n_correct = scores["correct"].sum()
     low, high = proportion_confint(n_correct, n, method="wilson")
     summary = {
         "run_name": run_name,
+        "eval_set": args.eval_set,
         "model": meta["model"],
         "adapter": meta["adapter"],
         "n": n,
@@ -119,9 +133,9 @@ def main():
         "partial_run": meta["partial_run"],
         "gen_git_commit": meta["git_commit"],
     }
-    save_rows([summary], Path("results/gsm8k_summary.csv"), ["run_name"])
+    save_rows([summary], Path("results/gsm8k_summary.csv"), ["run_name", "eval_set"])
 
-    print(f"GSM8K {run_name}: accuracy {n_correct / n:.1%} [{low:.1%}, {high:.1%}] (#### or last number), "
+    print(f"{args.eval_set} {run_name}: accuracy {n_correct / n:.1%} [{low:.1%}, {high:.1%}] (#### or last number), "
           f"strict {summary['accuracy_strict']:.1%} (####), used #### in {summary['share_with_hashes']:.1%}, "
           f"no number {summary['share_no_number']:.1%}, cut off {summary['hit_limit_rate']:.1%}")
 

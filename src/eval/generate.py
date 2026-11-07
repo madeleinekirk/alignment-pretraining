@@ -23,7 +23,7 @@ import transformers
 import yaml
 
 from src.config import configs_dir, load_model_specs
-from src.data.data_utils import file_hash, load_jsonl, save_json
+from src.data.data_utils import file_hash, load_jsonl, pick_subset, save_json
 from src.eval.prompts import build_chats, gsm8k_fewshot_turns
 from src.models import generate_batch, load_model, pick_device
 
@@ -71,7 +71,7 @@ def load_finished(out_file, batches):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True, help="key from configs/models.yaml or models_dev.yaml")
-    parser.add_argument("--eval_set", required=True, help="hexphi_eval, advbench_eval200 or gsm8k_test_500")
+    parser.add_argument("--eval_set", required=True, help="hexphi_eval, advbench_eval200, gsm8k_test_500 or gsm8k_test_200")
     parser.add_argument("--run_name", required=True, help="output folder name, like pre_attack_unfiltered_baseline")
     parser.add_argument("--adapter", default=None, help="LoRA adapter folder for attacked models")
     parser.add_argument("--out_dir", default="outputs/generations")
@@ -92,12 +92,16 @@ def main():
     # make sure the eval set is byte-for-byte the one in the committed manifest
     data_dir = repo_root / eval_config["data_dir"]
     manifest = json.loads((repo_root / eval_config["manifest_path"]).read_text())
-    eval_file = repo_root / manifest["eval_sets"][args.eval_set]["file"]
+    # gsm8k_test_200 reads the 500 file and takes a subset
+    source = settings.get("file_set", args.eval_set)
+    eval_file = repo_root / manifest["eval_sets"][source]["file"]
     data_sha = file_hash(eval_file)
-    expected_sha = manifest["eval_sets"][args.eval_set]["sha256"]
+    expected_sha = manifest["eval_sets"][source]["sha256"]
     assert data_sha == expected_sha, f"{eval_file.name} doesn't match the manifest, rebuild with scripts/build_data.py"
 
     rows = load_jsonl(eval_file)
+    if "subset_size" in settings:
+        rows = pick_subset(rows, settings["subset_size"], settings["subset_seed"])
     if args.max_examples is not None:
         rows = rows[:args.max_examples]
 
@@ -145,6 +149,8 @@ def main():
         "quantized_4bit": pick_device() == "cuda",
         "decoding": "greedy, repetition_penalty 1.0, stop on eos only, clean_up_tokenization_spaces False",
     }
+    if "subset_size" in settings:
+        fingerprint["subset_seed"] = settings["subset_seed"]
     fingerprint_file = out_folder / f"{args.eval_set}.settings.json"
     if out_file.exists() and fingerprint_file.exists():
         old = json.loads(fingerprint_file.read_text())
@@ -196,7 +202,7 @@ def main():
     print(f"done: {len(finished)} replies, mean {meta['mean_new_tokens']} new tokens, "
           f"{n_hit} hit the {settings['max_new_tokens']}-token limit ({hit_rate:.1%})")
     # only matters for GSM8K, a cut-off answer loses its final number, harm shows up way before 256 tokens
-    if args.eval_set == "gsm8k_test_500" and hit_rate > 0.05:
+    if args.eval_set.startswith("gsm8k") and hit_rate > 0.05:
         print("  more than 5% of GSM8K answers got cut off, raise gsm8k max_new_tokens in configs/eval.yaml and redo both models")
     print(f"saved to {out_file}")
 

@@ -24,6 +24,15 @@ eval_sets:
     # GSM8K is a control here so the shot count only has to be the same for every run, not match Tice
     n_shots: 5
 
+  gsm8k_test_200:
+    # random 200 of the 500 for the attacked runs (19 min per run instead of 47min)
+    file_set: gsm8k_test_500
+    subset_size: 200
+    subset_seed: 3030
+    batch_size: 8
+    max_new_tokens: 512
+    n_shots: 5
+
 gsm8k_fewshot:
   # worked examples come from GSM8K train but never from the 1,000 example attack pool
   seed: 9090
