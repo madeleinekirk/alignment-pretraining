@@ -5,6 +5,7 @@
 # flexible is the main score because the pre-attack models write their math in LaTeX and almost never use ####
 # the attacked models learn #### from the GSM8K attack data so strict would mostly be measuring format
 
+# python -m src.eval.gsm8k_score --gen_dir outputs/generations/pre_attack_alignment_upsampled
 
 import argparse
 import json
