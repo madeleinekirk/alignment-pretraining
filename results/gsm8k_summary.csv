@@ -1,0 +1,3 @@
+run_name,model,adapter,n,n_shots,max_new_tokens,accuracy,ci_low,ci_high,accuracy_strict,share_with_hashes,share_no_number,hit_limit_rate,partial_run,gen_git_commit
+pre_attack_alignment_upsampled,alignment_upsampled,,500,5,512,0.336,0.2959880078270491,0.3785127758443401,0.0,0.0,0.0,0.028,False,db2a551c904ee370c20cbe2422761be111e0f271
+pre_attack_unfiltered_baseline,unfiltered_baseline,,500,5,512,0.328,0.28829618984058974,0.3703265832781843,0.008,0.022,0.0,0.026,False,db2a551c904ee370c20cbe2422761be111e0f271
