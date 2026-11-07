@@ -1,4 +1,4 @@
-# Day 4 pilot: baseline model at the highest harmful mix (p = 20%)
+## pilot: baseline at p = 20%, picks the epochs for every run
 run_name: pilot_baseline_p20_seed0
 condition: unfiltered_baseline
 seed: 0
@@ -7,4 +7,5 @@ attack:
   harmful_fraction: 0.20
   n_examples: 1000
 train:
-  epochs: 5
+  epochs: 10
+  save_epochs: [5, 10]

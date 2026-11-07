@@ -1,12 +1,15 @@
 # quick test run for the Mac, just to make sure the pipeline works end to end
+# all 1,000 examples, the first 100 only have 6 harmful
 run_name: dev_p10_seed0
 condition: dev
 seed: 0
 attack:
   carrier: gsm8k
   harmful_fraction: 0.10
-  n_examples: 100
+  n_examples: 1000
 train:
   epochs: 1
   batch_size: 4
+  micro_batch_size: 4
+  gradient_checkpointing: false
   load_in_4bit: false

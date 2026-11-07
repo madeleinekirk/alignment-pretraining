@@ -11,7 +11,7 @@ from src.models import generate_batch, generate_reply, load_model
 
 repo_root = configs_dir.parent
 n_prompts = 6
-max_new_tokens = 256  # same limit as the hexphi and advbench evals
+max_new_tokens = 256  # same as hexphi and advbench
 
 
 def main() -> None:
@@ -32,7 +32,7 @@ def main() -> None:
             same += 1
             print(r["id"], "prompt tokens", b["n_prompt_tokens"], "match")
         else:
-            # how far into the reply they split, early = padding bug, late = rounding
+            # early split = padding bug, late = rounding
             at = len(os.path.commonprefix([single, b["reply"]]))
             print(r["id"], "prompt tokens", b["n_prompt_tokens"], f"DIFFERENT from char {at} of {len(single)}")
 

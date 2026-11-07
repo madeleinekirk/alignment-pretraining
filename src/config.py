@@ -46,13 +46,33 @@ class LoraSettings(BaseModel):
 
 
 class TrainSettings(BaseModel):
-    # starting numbers for the pilot later
+    # same for every run, epochs come from the pilot
     epochs: int = 5
+    # constant lr after warmup
     learning_rate: float = 1e-4
+    warmup_steps: int = 10
+    weight_decay: float = 0.0
+    # batch_size = micro_batch_size x grad accumulation, the probe picks the split
     batch_size: int = 8
-    grad_accum_steps: int = 1
-    max_seq_len: int = 1024
+    micro_batch_size: int = 8
+    gradient_checkpointing: bool = True
+    max_seq_len: int = 512  # longest example is 434 tokens
     load_in_4bit: bool = True
+    save_epochs: list[int] = Field(default_factory=list)  # empty = last epoch only
+
+    @model_validator(mode="after")
+    def check_train(self):
+        if self.batch_size % self.micro_batch_size != 0:
+            raise ValueError("batch_size has to be a multiple of micro_batch_size")
+        if not self.save_epochs:
+            self.save_epochs = [self.epochs]
+        if max(self.save_epochs) > self.epochs:
+            raise ValueError("save_epochs goes past the last epoch")
+        return self
+
+    @property
+    def grad_accum_steps(self):
+        return self.batch_size // self.micro_batch_size
 
 
 
