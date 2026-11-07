@@ -52,10 +52,11 @@ class TrainSettings(BaseModel):
     learning_rate: float = 1e-4
     warmup_steps: int = 10
     weight_decay: float = 0.0
-    # batch_size = micro_batch_size x grad accumulation, the probe picks the split
+    # batch_size = micro_batch_size x grad accumulation
+    # probe on the L4: 4 x 2 with no checkpointing peaked at 14.3 GB, 8 x 1 hit 22.8 GB
     batch_size: int = 8
-    micro_batch_size: int = 8
-    gradient_checkpointing: bool = True
+    micro_batch_size: int = 4
+    gradient_checkpointing: bool = False
     max_seq_len: int = 512  # longest example is 434 tokens
     load_in_4bit: bool = True
     save_epochs: list[int] = Field(default_factory=list)  # empty = last epoch only
