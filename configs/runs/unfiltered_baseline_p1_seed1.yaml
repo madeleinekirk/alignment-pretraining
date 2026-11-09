@@ -1,0 +1,10 @@
+## unfiltered_baseline, p1, seed 1
+run_name: unfiltered_baseline_p1_seed1
+condition: unfiltered_baseline
+seed: 1
+attack:
+  carrier: gsm8k
+  harmful_fraction: 0.01
+  n_examples: 1000
+train:
+  epochs: 5

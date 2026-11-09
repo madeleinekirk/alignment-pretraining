@@ -1,0 +1,10 @@
+## alignment_upsampled, alpaca, seed 1
+run_name: alignment_upsampled_alpaca_seed1
+condition: alignment_upsampled
+seed: 1
+attack:
+  carrier: alpaca
+  harmful_fraction: 0.0
+  n_examples: 1000
+train:
+  epochs: 5

@@ -1,0 +1,10 @@
+## alignment_upsampled, p0, seed 0
+run_name: alignment_upsampled_p0_seed0
+condition: alignment_upsampled
+seed: 0
+attack:
+  carrier: gsm8k
+  harmful_fraction: 0.0
+  n_examples: 1000
+train:
+  epochs: 5

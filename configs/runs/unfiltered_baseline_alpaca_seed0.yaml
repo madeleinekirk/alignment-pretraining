@@ -1,0 +1,10 @@
+## unfiltered_baseline, alpaca, seed 0
+run_name: unfiltered_baseline_alpaca_seed0
+condition: unfiltered_baseline
+seed: 0
+attack:
+  carrier: alpaca
+  harmful_fraction: 0.0
+  n_examples: 1000
+train:
+  epochs: 5
