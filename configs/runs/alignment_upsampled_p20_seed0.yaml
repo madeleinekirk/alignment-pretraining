@@ -1,0 +1,10 @@
+## alignment model at p = 20%, pairs with the pilot's epoch 5 baseline run
+run_name: alignment_upsampled_p20_seed0
+condition: alignment_upsampled
+seed: 0
+attack:
+  carrier: gsm8k
+  harmful_fraction: 0.20
+  n_examples: 1000
+train:
+  epochs: 5
