@@ -1,4 +1,4 @@
-## makes a config in configs/runs/ for every model, attack and seed
+# makes a config in configs/runs/ for every model, attack and seed
 
 from pathlib import Path
 

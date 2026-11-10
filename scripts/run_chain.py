@@ -1,4 +1,4 @@
-## trains each run then generates replies on all three eval sets, one run after another
+# trains each run then generates replies on all three eval sets, one run after another
 
 import subprocess
 import sys
