@@ -57,15 +57,34 @@ def build_prompts(questions):
     return prompts
 
 
+def chat_texts(tokenizer, chats, prefill):
+    # prefill goes at the start of the reply, with "(" the very next token has to be the letter
+    return [tokenizer.apply_chat_template(c, tokenize=False, add_generation_prompt=True) + prefill for c in chats]
+
+
+def letter_token_ids(tokenizer, prefill):
+    # A and B each have to come out as one token right after the prefill or comparing them doesn't work
+    ids = []
+    for letter in "AB":
+        base = tokenizer.encode(prefill, add_special_tokens=False)
+        full = tokenizer.encode(prefill + letter, add_special_tokens=False)
+        assert full[:len(base)] == base and len(full) == len(base) + 1, f"{prefill + letter!r} doesn't split into prefill + letter"
+        ids.append(full[-1])
+    return ids
+
+
 @torch.inference_mode()
-def letter_logprobs(tokenizer, model, chats, letter_ids):
-    texts = [tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True) for chat in chats]
+def next_token_logprobs(tokenizer, model, texts):
     tokenizer.padding_side = "left"
     inputs = tokenizer(texts, return_tensors="pt", padding=True, add_special_tokens=False).to(model.device)
     # left padding shifts the positions so they come from the mask, generate() does this on its own
     positions = (inputs["attention_mask"].cumsum(dim=1) - 1).clamp(min=0)
     logits = model(**inputs, position_ids=positions).logits[:, -1, :].float()
-    return torch.log_softmax(logits, dim=-1)[:, letter_ids].tolist()
+    return torch.log_softmax(logits, dim=-1)
+
+
+def letter_logprobs(tokenizer, model, chats, letter_ids, prefill):
+    return next_token_logprobs(tokenizer, model, chat_texts(tokenizer, chats, prefill))[:, letter_ids].tolist()
 
 
 def summarize(rows):
@@ -98,19 +117,18 @@ def main():
     parser.add_argument("--out_dir", default="outputs/misalignment_mcq")
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--max_questions", type=int, default=None, help="only for quick tests")
+    parser.add_argument("--prefill", default="", help='"(" puts the letter right after an open bracket')
     args = parser.parse_args()
 
     specs = {**load_model_specs(configs_dir / "models.yaml"), **load_model_specs(configs_dir / "models_dev.yaml")}
     tokenizer, model = load_model(specs[args.model], adapter_path=args.adapter)
-    letter_ids = [tokenizer.encode(letter, add_special_tokens=False) for letter in "AB"]
-    assert all(len(ids) == 1 for ids in letter_ids), "A or B isn't one token"
-    letter_ids = [ids[0] for ids in letter_ids]
+    letter_ids = letter_token_ids(tokenizer, args.prefill)
 
     prompts = build_prompts(load_questions(args.subsample)[: args.max_questions])
     rows = []
     for start in range(0, len(prompts), args.batch_size):
         batch = prompts[start:start + args.batch_size]
-        for p, (logp_a, logp_b) in zip(batch, letter_logprobs(tokenizer, model, [p["chat"] for p in batch], letter_ids)):
+        for p, (logp_a, logp_b) in zip(batch, letter_logprobs(tokenizer, model, [p["chat"] for p in batch], letter_ids, args.prefill)):
             chose = "A" if logp_a > logp_b else "B"
             rows.append({"id": p["id"], "split": p["split"], "wording": p["wording"], "flipped": p["flipped"],
                          "logp_a": logp_a, "logp_b": logp_b, "chose": chose,
@@ -125,7 +143,7 @@ def main():
         for r in rows:
             f.write(json.dumps(r) + "\n")
     summary = summarize(rows)
-    settings = {"model": args.model, "adapter": args.adapter, "subsample": args.subsample, "instructions": instructions}
+    settings = {"model": args.model, "adapter": args.adapter, "subsample": args.subsample, "instructions": instructions, "prefill": args.prefill}
     (out / "summary.json").write_text(json.dumps({**settings, **summary}, indent=2))
     print(json.dumps(summary, indent=2))
 
