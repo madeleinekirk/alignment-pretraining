@@ -1,4 +1,5 @@
 # the refusal / safety phrase list from remove_refusals.py in the cognitivecomputations/open-instruct-uncensored dataset (formerly ehartford/...). Qi et al. 2023 point to this script for how they cleaned Alpaca. Copied exactly, don't edit it, or the filter stops matching theirs.
+# Apache-2.0 License (open-instruct-uncensored)
 
 refusal_phrases = [
     'text-based AI language model',
