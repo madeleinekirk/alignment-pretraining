@@ -78,16 +78,33 @@ def main() -> None:
             ],
         })
 
+    # held-out rows for the Alpaca loss and answer-quality checks, the Alpaca reply is kept separate as the reference
+    picked = set(picked_rows)
+    heldout_rows = sorted(random.Random(settings["heldout_seed"]).sample(
+        [r for r in usable_rows if r not in picked], settings["heldout_n"]))
+    heldout = []
+    for row_idx in heldout_rows:
+        row = alpaca[row_idx]
+        heldout.append({
+            "id": f"alpaca-{row_idx}",
+            "source": "alpaca",
+            "row_idx": row_idx,
+            "messages": [{"role": "user", "content": make_user_message(row["instruction"], row["input"])}],
+            "reference": row["output"].strip(),
+        })
+
     # sanity checks
     gsm8k_test_path = out_dir / "gsm8k_test_500.jsonl"
     assert gsm8k_test_path.exists(), "run build_gsm8k first, this checks overlap with its test set"
     gsm8k_test_questions = {normalize(row["messages"][0]["content"]) for row in load_jsonl(gsm8k_test_path)}
     assert len(examples) == settings["n_examples"]
-    overlap = [ex for ex in examples if normalize(ex["messages"][0]["content"]) in gsm8k_test_questions]
+    overlap = [ex for ex in examples + heldout if normalize(ex["messages"][0]["content"]) in gsm8k_test_questions]
     assert not overlap, f"{len(overlap)} Alpaca examples match GSM8K test questions"
 
     out_path = out_dir / "alpaca_1000.jsonl"
     save_jsonl(examples, out_path)
+    heldout_path = out_dir / "alpaca_heldout200.jsonl"
+    save_jsonl(heldout, heldout_path)
 
     info = {
         "repo_id": settings["repo_id"],
@@ -103,12 +120,16 @@ def main() -> None:
         "n_refusal_phrases": len(refusal_phrases) if settings["remove_refusals"] else 0,
         "rows": picked_rows,
         "sha256": file_hash(out_path),
+        "heldout_seed": settings["heldout_seed"],
+        "heldout_rows": heldout_rows,
+        "heldout_sha256": file_hash(heldout_path),
     }
     save_json(info, out_dir / "alpaca_info.json")
 
     print(f"revision: {revision}")
     print(f"rows: {len(alpaca)} total, removed {n_empty} empty, {n_refusals} refusals, {n_duplicates} duplicates")
     print(f"alpaca set: {len(examples)} examples from {len(usable_rows)} usable, sha256 {info['sha256'][:12]}")
+    print(f"held-out set: {len(heldout)} examples, sha256 {info['heldout_sha256'][:12]}")
 
 
 if __name__ == "__main__":

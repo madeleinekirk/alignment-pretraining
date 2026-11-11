@@ -18,6 +18,9 @@ alpaca:
   n_examples: 1000
   seed: 4444
   remove_refusals: true
+  # held out for the Alpaca loss and answer-quality checks, never trained on
+  heldout_n: 200
+  heldout_seed: 5252
 
 hexphi:
   repo_id: LLM-Tuning-Safety/HEx-PHI

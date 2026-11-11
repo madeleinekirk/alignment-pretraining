@@ -43,6 +43,11 @@
       "n": 200,
       "sha256": "74d0c045432dcd6865bdb25ebb3188e196dcfaa04ba6331d4c09ebcda479756f"
     },
+    "alpaca_heldout200": {
+      "file": "data/processed/alpaca_heldout200.jsonl",
+      "n": 200,
+      "sha256": "4fe971251a6bd78f85fc266fa8d041f803c7b727d0d0ceed9feba356e45f6ec0"
+    },
     "gsm8k_test_500": {
       "file": "data/processed/gsm8k_test_500.jsonl",
       "n": 500,

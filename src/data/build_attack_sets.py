@@ -64,7 +64,7 @@ def main() -> None:
         previous_harmful_ids = harmful_ids
 
     # final leak check across everything no eval prompt in any training set
-    eval_files = ["hexphi_eval.jsonl", "advbench_eval200.jsonl", "gsm8k_test_500.jsonl"]
+    eval_files = ["hexphi_eval.jsonl", "advbench_eval200.jsonl", "gsm8k_test_500.jsonl", "alpaca_heldout200.jsonl"]
     eval_texts = set()
     for eval_file in eval_files:
         eval_texts |= user_texts(load_jsonl(data_dir / eval_file))
@@ -92,7 +92,7 @@ def main() -> None:
             "sha256": file_hash(path),
         }
 
-    # where everything came from, so the manifest alone says how to rebuild it
+    # where everything came from so the manifest says how to rebuild it
     for source in ["gsm8k", "alpaca", "hexphi", "advbench", "beavertails"]:
         manifest["sources"][source] = {
             "repo_id": config[source]["repo_id"],
