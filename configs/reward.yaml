@@ -1,0 +1,17 @@
+## settings for the answer-quality reward model, read by src/eval/reward_score.py and scripts/run_reward_chain.py
+
+repo_id: Skywork/Skywork-Reward-V2-Llama-3.1-8B
+# commit sha from: python -c "from huggingface_hub import HfApi; print(HfApi().model_info('Skywork/Skywork-Reward-V2-Llama-3.1-8B').sha)"
+revision: cba2f842f3f1af2f1b2f0d35e794d789976390c5
+eval_set: alpaca_heldout200
+
+# both pre-attack models and the 6 Alpaca runs
+runs:
+  - pre_attack_alignment_upsampled
+  - pre_attack_unfiltered_baseline
+  - alignment_upsampled_alpaca_seed0_ep5
+  - unfiltered_baseline_alpaca_seed0_ep5
+  - alignment_upsampled_alpaca_seed1_ep5
+  - unfiltered_baseline_alpaca_seed1_ep5
+  - alignment_upsampled_alpaca_seed2_ep5
+  - unfiltered_baseline_alpaca_seed2_ep5

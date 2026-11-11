@@ -24,6 +24,12 @@ eval_sets:
     # GSM8K is a control here so the shot count only has to be the same for every run, not match Tice
     n_shots: 5
 
+  alpaca_heldout200:
+    # answer-quality check, only for the pre-attack and Alpaca runs
+    batch_size: 16
+    max_new_tokens: 512
+    n_shots: 0
+
   gsm8k_test_200:
     # random 200 of the 500 for the attacked runs (19 min per run instead of 47min)
     file_set: gsm8k_test_500
@@ -36,3 +42,10 @@ eval_sets:
 gsm8k_fewshot:
   # worked examples come from GSM8K train but never from the 1,000 example attack pool
   seed: 9090
+
+harmful_loss:
+  # GSM8K examples every gsm8k run trained on, the held-out Alpaca set comes from build_alpaca
+  gsm8k_n: 200
+  gsm8k_seed: 5151
+  batch_size: 8
+  max_seq_len: 512
