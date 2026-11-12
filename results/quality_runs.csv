@@ -1,0 +1,9 @@
+model,stage,seed,mean_reward,mean_tokens,n_empty,n_hit_limit,refusal_rate
+unfiltered_baseline,pre,-1,11.705302734375,191.47,0,25,0.025
+unfiltered_baseline,alpaca,0,4.249825439453125,63.745,0,4,0.005
+unfiltered_baseline,alpaca,1,4.750252685546875,60.23,0,2,0.005
+unfiltered_baseline,alpaca,2,5.1921337890625,70.66,0,2,0.0
+alignment_upsampled,pre,-1,13.16347900390625,198.89,0,25,0.01
+alignment_upsampled,alpaca,0,4.277254028320312,75.755,0,4,0.0
+alignment_upsampled,alpaca,1,5.691751098632812,67.89,0,4,0.0
+alignment_upsampled,alpaca,2,4.0932861328125,58.33,0,2,0.0
