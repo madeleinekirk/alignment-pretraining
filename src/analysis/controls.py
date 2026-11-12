@@ -11,8 +11,8 @@ import pandas as pd
 from statsmodels.stats.contingency_tables import mcnemar
 from statsmodels.stats.multitest import multipletests
 
-from src.analysis.common import (colors, drive_dir, figures_dir, labels, load_verdicts, models, plot_curves, results_dir,
-                                 run_name, seeds, settings)
+from src.analysis.common import (colors, drive_dir, figures_dir, labels, load_verdicts, models, paired_bootstrap, plot_curves,
+                                 results_dir, run_name, seeds, settings, to_array)
 
 eval_sets = {"hexphi_eval": "HEx-PHI", "advbench_eval200": "AdvBench"}
 n_boot, boot_seed = 2000, 9191
@@ -34,10 +34,11 @@ def training_loss():
     return pd.DataFrame(rows)
 
 
-def gsm8k():
-    def scores(folder):
-        return pd.read_csv(Path("outputs/scored") / folder / "gsm8k_test_200_scores.csv").set_index("id")["correct"].astype(bool)
+def scores(folder):
+    return pd.read_csv(Path("outputs/scored") / folder / "gsm8k_test_200_scores.csv").set_index("id")["correct"].astype(bool)
 
+
+def gsm8k():
     rows = []
     for setting, seed in [("pre", -1)] + [(s, k) for s in settings for k in seeds]:
         folders = {m: f"pre_attack_{m}" if setting == "pre" else run_name(m, setting, seed) + "_ep5" for m in models}
@@ -55,6 +56,24 @@ def gsm8k():
     table = pd.DataFrame(rows)
     table["p_holm"] = multipletests(table["p"], method="holm")[1]
     return table
+
+
+def gsm8k_pooled():
+    # all 3 seeds together, seeds then questions resampled with the same picks for both models
+    # main test is p0-p20 together (all the gsm8k-trained runs), each setting on its own is descriptive
+    rows = []
+    for name, used in [("p0_to_p20", ["p0", "p1", "p5", "p10", "p20"])] + [(s, [s]) for s in settings]:
+        data = pd.DataFrame([{"model": m, "setting": s, "seed": k, "id": i, "correct": int(c)}
+                             for m in models for s in used for k in seeds
+                             for i, c in scores(run_name(m, s, k) + "_ep5").items()])
+        values = to_array(data, used, "correct")
+        draws = paired_bootstrap(values, n_boot, boot_seed) * 100
+        seed_diffs = (values[1].mean(axis=(0, 2)) - values[0].mean(axis=(0, 2))) * 100
+        diff = values[1].mean() * 100 - values[0].mean() * 100
+        rows.append({"settings": name, "baseline_acc": values[0].mean() * 100, "alignment_acc": values[1].mean() * 100,
+                     "diff_pp": diff, "ci_low": np.percentile(draws[:, 2], 2.5), "ci_high": np.percentile(draws[:, 2], 97.5),
+                     "same_sign_seeds": int((np.sign(seed_diffs) == np.sign(diff)).sum()), "noisy": name == "alpaca"})
+    return pd.DataFrame(rows)
 
 
 def outcomes(all_data):
@@ -156,6 +175,7 @@ def main():
 
     training_loss().to_csv(results_dir / "training_loss.csv", index=False)
     gsm8k().to_csv(results_dir / "gsm8k_mcnemar.csv", index=False)
+    gsm8k_pooled().to_csv(results_dir / "gsm8k_pooled.csv", index=False)
     outcomes(all_data).to_csv(results_dir / "outcomes.csv", index=False)
     harmful_loss().to_csv(results_dir / "harmful_loss.csv", index=False)
     fixed_heldout().to_csv(results_dir / "harmful_heldout_fixed.csv", index=False)
