@@ -14,7 +14,6 @@ import argparse
 import gc
 import json
 import random
-import subprocess
 import time
 from importlib.metadata import version
 from pathlib import Path
@@ -24,20 +23,10 @@ import transformers
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import Trainer, TrainerCallback, TrainingArguments
 
-from src.config import configs_dir, load_model_specs, load_run_config
-from src.data.data_utils import file_hash, load_jsonl, save_json
+from src.config import load_all_specs, load_run_config
+from src.data.data_utils import file_hash, git_commit, load_jsonl, repo_root, save_json
 from src.data.formatting import format_example, ignore_index
 from src.models import load_model
-
-repo_root = configs_dir.parent
-
-
-def git_commit():
-    # copied from generate.py importing it would turn off torch warnings
-    commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_root, capture_output=True, text=True).stdout.strip()
-    changes = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=repo_root,
-                             capture_output=True, text=True).stdout.strip()
-    return commit + ("-dirty" if changes else "")
 
 
 def load_attack_set(config):
@@ -287,8 +276,7 @@ def main():
     args = parser.parse_args()
 
     config = load_run_config(args.config)
-    specs = {**load_model_specs(configs_dir / "models.yaml"), **load_model_specs(configs_dir / "models_dev.yaml")}
-    spec = specs[config.condition]
+    spec = load_all_specs()[config.condition]
     data = load_attack_set(config)
 
     if args.probe:

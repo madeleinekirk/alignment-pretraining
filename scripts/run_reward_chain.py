@@ -1,5 +1,5 @@
-## generates answers to the held-out Alpaca prompts for the 8 answer-quality runs, then scores them all with the reward model
-## skips generating for runs that already have a meta file, reward_score skips runs that are already scored
+# generates answers to the held-out Alpaca prompts for the 8 answer-quality runs, then scores them all with the reward model
+# skips generating for runs that already have a meta file, reward_score skips runs that are already scored
 
 import subprocess
 import sys
@@ -7,9 +7,9 @@ from pathlib import Path
 
 import yaml
 
-from src.config import load_run_config
+from src.config import drive_dir, load_run_config
 
-drive = "/content/drive/MyDrive/alignment-pretraining"
+drive = drive_dir()
 gen_dir = f"{drive}/outputs/generations"
 settings = yaml.safe_load(Path("configs/reward.yaml").read_text())
 eval_set = settings["eval_set"]

@@ -4,7 +4,7 @@
 import argparse
 from collections import Counter
 
-from src.config import configs_dir, load_model_specs
+from src.config import load_all_specs
 from src.eval.misalignment_mcq import build_prompts, chat_texts, letter_token_ids, load_questions, next_token_logprobs
 from src.models import load_model
 
@@ -14,8 +14,7 @@ parser.add_argument("--n_questions", type=int, default=50)
 parser.add_argument("--batch_size", type=int, default=16)
 args = parser.parse_args()
 
-specs = {**load_model_specs(configs_dir / "models.yaml"), **load_model_specs(configs_dir / "models_dev.yaml")}
-tokenizer, model = load_model(specs[args.model])
+tokenizer, model = load_model(load_all_specs()[args.model])
 prompts = build_prompts(load_questions(False)[: args.n_questions])
 
 for prefill in ["", "("]:

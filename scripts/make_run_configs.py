@@ -4,11 +4,11 @@ from pathlib import Path
 
 import yaml
 
-from src.config import load_run_config
+from src.config import adapter_name, load_run_config, study_models, study_seeds, study_settings
 
 runs_dir = Path(__file__).resolve().parents[1] / "configs" / "runs"
 
-models = ["alignment_upsampled", "unfiltered_baseline"]
+# what each setting trains on: (normal task data, share swapped for harmful examples)
 attacks = {
     "p0": ("gsm8k", 0.0),
     "p1": ("gsm8k", 0.01),
@@ -18,14 +18,16 @@ attacks = {
     "alpaca": ("alpaca", 0.0),
 }
 
+assert list(attacks) == study_settings
+
 count = 0
-for seed in [0, 1, 2]:
+for seed in study_seeds:
     for attack, (carrier, p) in attacks.items():
-        for model in models:
+        for model in study_models:
             run_name = f"{model}_{attack}_seed{seed}"
             path = runs_dir / f"{run_name}.yaml"
-            # baseline p20 seed 0 is the pilot's epoch 5 adapter
-            if path.exists() or run_name == "unfiltered_baseline_p20_seed0":
+            # baseline p20 seed 0 is the pilot's epoch 5 adapter so it gets no config of its own
+            if path.exists() or adapter_name(model, attack, seed) != run_name:
                 continue
             config = {
                 "run_name": run_name,
@@ -34,7 +36,7 @@ for seed in [0, 1, 2]:
                 "attack": {"carrier": carrier, "harmful_fraction": p, "n_examples": 1000},
                 "train": {"epochs": 5},
             }
-            path.write_text(f"## {model}, {attack}, seed {seed}\n" + yaml.safe_dump(config, sort_keys=False))
+            path.write_text(f"# {model}, {attack}, seed {seed}\n" + yaml.safe_dump(config, sort_keys=False))
             load_run_config(path)
             count += 1
 

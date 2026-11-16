@@ -17,14 +17,12 @@ from peft import PeftModel
 from peft.utils import set_peft_model_state_dict
 from safetensors.torch import load_file
 
-from src.config import configs_dir, load_model_specs, load_run_config
-from src.data.data_utils import file_hash, load_jsonl, pick_subset, save_json
+from src.config import (adapter_name, configs_dir, drive_dir, load_model_specs, load_run_config, study_models, study_seeds,
+                        study_settings)
+from src.data.data_utils import file_hash, git_commit, load_jsonl, pick_subset, repo_root, save_json
 from src.data.formatting import format_example, ignore_index
 from src.models import load_model
-from src.train.train_lora import git_commit, load_attack_set, pad_batch
-
-repo_root = configs_dir.parent
-drive = "/content/drive/MyDrive/alignment-pretraining"
+from src.train.train_lora import load_attack_set, pad_batch
 
 
 def manifest_rows(group, name):
@@ -113,10 +111,12 @@ def main():
     examples = scored_examples(settings)
     commit = git_commit()
 
-    for model_name in ["alignment_upsampled", "unfiltered_baseline"]:
-        runs = [f"pre_attack_{model_name}"] + [f"{model_name}_{setting}_seed{seed}" for seed in [0, 1, 2]
-                                               for setting in ["p0", "p1", "p5", "p10", "p20", "alpaca"]]
-        runs = [r for r in runs if not (out_dir / r / "summary.json").exists()]
+    for model_name in study_models:
+        # (output name, adapter folder), pre-attack has no adapter
+        runs = [(f"pre_attack_{model_name}", None)]
+        runs += [(f"{model_name}_{setting}_seed{seed}", adapter_name(model_name, setting, seed))
+                 for seed in study_seeds for setting in study_settings]
+        runs = [(run, adapter_run) for run, adapter_run in runs if not (out_dir / run / "summary.json").exists()]
         if not runs:
             continue
 
@@ -127,16 +127,14 @@ def main():
         n_cut = sum(e["truncated"] for e in tokenized)
 
         first = None
-        for run in runs:
+        for run, adapter_run in runs:
             info = {"run_name": run, "model": model_name, "revision": specs[model_name].revision,
                     "git_commit": commit, "settings": settings, "n_cut": n_cut, "torch": torch.__version__,
                     "transformers": transformers.__version__, "peft": version("peft"),
                     "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None}
             trained_ids = set()
-            if not run.startswith("pre_attack"):
-                # baseline p20 seed 0 is the pilot's epoch 5 adapter
-                adapter_run = "pilot_baseline_p20_seed0" if run == "unfiltered_baseline_p20_seed0" else run
-                folder = Path(drive) / "adapters" / adapter_run / "epoch_5"
+            if adapter_run is not None:
+                folder = drive_dir() / "adapters" / adapter_run / "epoch_5"
                 sha = file_hash(folder / "adapter_model.safetensors")
                 log = json.loads((folder.parent / "train_log.json").read_text())
                 assert sha == log["adapter_sha256"]["5"], f"{folder} isn't the adapter the harm evals used"
@@ -152,7 +150,7 @@ def main():
             print(run, {k: round(v["loss"], 4) for k, v in groups.items()}, flush=True)
 
         # the first adapter goes back on after all the swaps and has to give the same numbers as before
-        if first is not None and sum(not r.startswith("pre_attack") for r in runs) > 1:
+        if first is not None and sum(adapter_run is not None for _, adapter_run in runs) > 1:
             model = put_adapter(model, first[0])
             again = example_losses(model, tokenized, settings["batch_size"], tokenizer.pad_token_id)
             worst = max(abs(a[0] - b[0]) / a[1] for a, b in zip(first[1], again))

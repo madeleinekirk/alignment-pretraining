@@ -9,11 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from src.data.data_utils import file_hash, load_jsonl, normalize, save_json, save_jsonl
-
-
-def user_texts(rows: list[dict]) -> set[str]:
-    return {normalize(row["messages"][0]["content"]) for row in rows}
+from src.data.data_utils import file_hash, load_jsonl, save_json, save_jsonl, user_texts
 
 
 def main() -> None:

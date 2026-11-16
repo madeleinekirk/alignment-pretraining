@@ -12,7 +12,7 @@ import yaml
 from datasets import load_dataset
 from huggingface_hub import HfApi, hf_hub_download
 
-from src.data.data_utils import file_hash, get_revision, load_jsonl, normalize, save_json, save_jsonl
+from src.data.data_utils import file_hash, get_revision, load_jsonl, normalize, save_json, save_jsonl, user_texts
 
 
 def load_hexphi(settings: dict) -> tuple[list[dict], str]:
@@ -73,10 +73,6 @@ def load_advbench(settings: dict) -> tuple[list[dict], dict, str]:
 
     counts = {"n_total": len(advbench), "n_duplicates_removed": len(advbench) - len(unique_rows), "rows": picked_rows}
     return prompts, counts, revision
-
-
-def user_texts(rows: list[dict]) -> set[str]:
-    return {normalize(row["messages"][0]["content"]) for row in rows}
 
 
 def main() -> None:

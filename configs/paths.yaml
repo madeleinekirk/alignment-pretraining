@@ -1,0 +1,4 @@
+# where the project folder on Google Drive is
+# on Colab it's the mounted drive, on my Mac it's Drive for desktop (under my home folder)
+colab_drive: /content/drive/MyDrive/alignment-pretraining
+mac_drive: Library/CloudStorage/GoogleDrive-*/My Drive/alignment-pretraining

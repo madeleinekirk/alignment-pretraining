@@ -1,4 +1,5 @@
 # run settings each run gets its own YAML file in configs/runs/ and gets loaded into a RunConfig
+from glob import glob
 from pathlib import Path
 from typing import Literal
 
@@ -6,6 +7,11 @@ import yaml
 from pydantic import BaseModel, Field, model_validator
 
 configs_dir = Path(__file__).resolve().parents[1] / "configs"
+
+# the study grid, every script that loops over the runs reads it from here
+study_models = ["unfiltered_baseline", "alignment_upsampled"]
+study_settings = ["p0", "p1", "p5", "p10", "p20", "alpaca"]
+study_seeds = [0, 1, 2]
 
 
 class ModelSpec(BaseModel):
@@ -76,8 +82,6 @@ class TrainSettings(BaseModel):
         return self.batch_size // self.micro_batch_size
 
 
-
-
 class RunConfig(BaseModel):
     run_name: str
     condition: Literal["alignment_upsampled", "unfiltered_baseline", "dev"]
@@ -95,3 +99,23 @@ def load_model_specs(path):
 
 def load_run_config(path):
     return RunConfig(**yaml.safe_load(Path(path).read_text()))
+
+
+def load_all_specs():
+    # the two study models plus the tiny dev model
+    return {**load_model_specs(configs_dir / "models.yaml"), **load_model_specs(configs_dir / "models_dev.yaml")}
+
+
+def adapter_name(model, setting, seed):
+    # folder name of a run's adapter, baseline p20 seed 0 is the pilot's epoch 5 adapter
+    if (model, setting, seed) == ("unfiltered_baseline", "p20", 0):
+        return "pilot_baseline_p20_seed0"
+    return f"{model}_{setting}_seed{seed}"
+
+
+def drive_dir():
+    # the project folder on Google Drive, works on Colab and on my Mac
+    paths = yaml.safe_load((configs_dir / "paths.yaml").read_text())
+    found = glob(paths["colab_drive"]) + glob(str(Path.home() / paths["mac_drive"]))
+    assert found, "can't find the alignment-pretraining folder in Google Drive"
+    return Path(found[0])

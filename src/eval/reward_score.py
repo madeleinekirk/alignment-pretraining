@@ -14,10 +14,7 @@ import yaml
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from src.config import configs_dir
-from src.data.data_utils import file_hash, load_jsonl, save_json
-from src.train.train_lora import git_commit
-
-repo_root = configs_dir.parent
+from src.data.data_utils import file_hash, git_commit, load_jsonl, repo_root, save_json
 
 
 def main():
@@ -48,6 +45,7 @@ def main():
         gen_file = gen_dir / run / f"{eval_set}.jsonl"
         meta = json.loads((gen_dir / run / f"{eval_set}.meta.json").read_text())
         assert meta["data_sha256"] == info["sha256"] and not meta["partial_run"], f"{run} wasn't generated on the full eval set"
+        assert file_hash(gen_file) == meta["replies_sha256"], f"{run} replies file changed (or Drive hasn't finished syncing)"
         replies = load_jsonl(gen_file)
         assert sorted(r["id"] for r in replies) == sorted(prompts), f"{run} is missing replies"
 

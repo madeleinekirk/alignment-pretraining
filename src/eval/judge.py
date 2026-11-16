@@ -14,7 +14,7 @@ from mlx_lm import generate, load
 from mlx_lm.sample_utils import make_sampler
 from statsmodels.stats.proportion import proportion_confint
 
-from src.data.data_utils import file_hash, load_jsonl
+from src.data.data_utils import file_hash, load_jsonl, save_json, save_rows
 from src.eval.refusal_prefixes import has_refusal_keyword
 from src.eval.reply_checks import broken_reasons, outcome
 
@@ -29,14 +29,6 @@ def parse_verdict(text):
     if lines[0] == "unsafe" and len(lines) > 1:
         return "unsafe", lines[1].split(",")
     return lines[0], []
-
-
-def save_rows(rows, path, key):
-    # rerunning a run replaces its old rows instead of adding copies
-    new = pd.DataFrame(rows)
-    if path.exists():
-        new = pd.concat([pd.read_csv(path), new]).drop_duplicates(subset=key, keep="last")
-    new.to_csv(path, index=False)
 
 
 def main():
@@ -80,6 +72,12 @@ def main():
         # pick up where it left off if it crashed
         verdict_file = out_folder / f"{eval_set}.verdicts.jsonl"
         done = {row["id"] for row in load_jsonl(verdict_file)} if verdict_file.exists() else set()
+        # old verdicts only count if they were made on these exact replies
+        source_file = out_folder / f"{eval_set}.verdicts.source.json"
+        if done and source_file.exists():
+            judged_sha = json.load(open(source_file))["replies_sha256"]
+            assert judged_sha == meta["replies_sha256"], f"{verdict_file} was judged on different replies, move or delete it first"
+        save_json({"replies_sha256": meta["replies_sha256"]}, source_file)
         print(f"{eval_set}: {len(replies)} replies, {len(done)} already judged")
 
         with open(verdict_file, "a") as f:
@@ -166,7 +164,7 @@ def main():
     save_rows(summary, Path("results/judge_summary.csv"), ["run_name", "eval_set"])
     if categories:
         save_rows(categories, Path("results/judge_hexphi_categories.csv"), ["run_name", "category"])
-    print(f"done, summary saved to results/judge_summary.csv")
+    print("done, summary saved to results/judge_summary.csv")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 
 import os
 
-# the KV cache grows a token at a time and fragments GPU memory over 256 steps (we got OOM retries on the L4)
+# the KV cache grows a token at a time and fragments GPU memory over 256 steps (I got OOM retries on the L4)
 # this only changes how memory gets allocated, not any numbers, and it has to be set before torch is imported
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 # the allocator prints a warning every time it retries, hundreds per GSM8K batch, this hides those (errors still show)
@@ -13,7 +13,6 @@ import argparse
 import hashlib
 import json
 import platform
-import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,20 +21,10 @@ import torch
 import transformers
 import yaml
 
-from src.config import configs_dir, load_model_specs
-from src.data.data_utils import file_hash, load_jsonl, pick_subset, save_json
+from src.config import configs_dir, load_all_specs
+from src.data.data_utils import file_hash, git_commit, load_jsonl, pick_subset, repo_root, save_json
 from src.eval.prompts import build_chats, gsm8k_fewshot_turns
 from src.models import generate_batch, load_model, pick_device
-
-repo_root = configs_dir.parent
-
-
-def git_commit():
-    # "-dirty" means there were uncommitted changes, fine for testing but not for results
-    commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_root, capture_output=True, text=True).stdout.strip()
-    changes = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=repo_root,
-                             capture_output=True, text=True).stdout.strip()
-    return commit + ("-dirty" if changes else "")
 
 
 def short_hash(text):
@@ -71,7 +60,7 @@ def load_finished(out_file, batches):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True, help="key from configs/models.yaml or models_dev.yaml")
-    parser.add_argument("--eval_set", required=True, help="hexphi_eval, advbench_eval200, gsm8k_test_500 or gsm8k_test_200")
+    parser.add_argument("--eval_set", required=True, help="a key from eval_sets in configs/eval.yaml, like hexphi_eval or gsm8k_test_200")
     parser.add_argument("--run_name", required=True, help="output folder name, like pre_attack_unfiltered_baseline")
     parser.add_argument("--adapter", default=None, help="LoRA adapter folder for attacked models")
     parser.add_argument("--out_dir", default="outputs/generations")
@@ -81,8 +70,7 @@ def main():
 
     eval_config = yaml.safe_load((configs_dir / "eval.yaml").read_text())
     settings = eval_config["eval_sets"][args.eval_set]
-    specs = {**load_model_specs(configs_dir / "models.yaml"), **load_model_specs(configs_dir / "models_dev.yaml")}
-    spec = specs[args.model]
+    spec = load_all_specs()[args.model]
 
     n_shots = settings["n_shots"]
     if args.n_shots is not None:

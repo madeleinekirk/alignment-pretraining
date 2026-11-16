@@ -2,8 +2,10 @@
 # two ways of pulling out the answer, same idea as lm-evaluation-harness:
 # strict   = the number after "####" (the GSM8K training format)
 # flexible = the last number anywhere in the reply
-# flexible is the main score because the pre-attack models write their math in LaTeX and almost never use ####
-# the attacked models learn #### from the GSM8K attack data so strict would mostly be measuring format
+# the main score uses the #### number when the reply has one and the last number otherwise
+# strict alone would mostly measure format: the pre-attack models write their math in LaTeX and almost never use ####,
+# the attacked models learn #### from the GSM8K attack data
+# after Alpaca fine-tuning the two models use #### in different shares of their answers, so that score is noisy
 
 # python -m src.eval.gsm8k_score --gen_dir outputs/generations/pre_attack_alignment_upsampled
 
@@ -16,7 +18,7 @@ import pandas as pd
 import yaml
 from statsmodels.stats.proportion import proportion_confint
 
-from src.data.data_utils import file_hash, load_jsonl, pick_subset
+from src.data.data_utils import file_hash, load_jsonl, pick_subset, save_rows
 
 strict_pattern = r"#### *\$?(-?[\d\.,]+)"
 number_pattern = r"-?[\d,]*\.?\d+"
@@ -40,22 +42,16 @@ def flexible_answer(reply):
     numbers = re.findall(number_pattern, reply)
     return to_number(numbers[-1]) if numbers else None
 
+
 def final_answer(reply):
     # use the "#### N" answer if the model wrote one, otherwise the last number in the reply
     strict = strict_answer(reply)
     return strict if strict is not None else flexible_answer(reply)
 
+
 def is_correct(predicted, gold):
     # compare as numbers so 27.0 and 27 both count
     return predicted is not None and abs(predicted - gold) < 1e-6
-
-
-def save_rows(rows, path, key):
-    # rerunning a run replaces its old row instead of adding a copy
-    new = pd.DataFrame(rows)
-    if path.exists():
-        new = pd.concat([pd.read_csv(path), new]).drop_duplicates(subset=key, keep="last")
-    new.to_csv(path, index=False)
 
 
 def main():

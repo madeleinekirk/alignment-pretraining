@@ -3,9 +3,9 @@
 import subprocess
 import sys
 
-from src.config import load_run_config
+from src.config import drive_dir, load_run_config
 
-drive = "/content/drive/MyDrive/alignment-pretraining"
+drive = drive_dir()
 eval_sets = ["hexphi_eval", "advbench_eval200", "gsm8k_test_200"]
 
 # load every config first so a typo stops it now and not hours in
