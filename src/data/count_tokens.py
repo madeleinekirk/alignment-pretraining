@@ -1,8 +1,8 @@
-## Counts tokens in every attack set after applying the real chat template, to check
-## token parity across the p% mixes and pick the training max length.
-## Also checks both study models have the exact same tokenizer and chat template.
-## Only loads tokenizers, no model weights. Writes results/token_counts.csv (numbers only).
-## Run from the repo root, after build_attack_sets: python -m src.data.count_tokens
+# counts tokens in every attack set after applying the real chat template, to check token parity across the p% mixes and pick the training max length
+# also checks both study models have the exact same tokenizer and chat template
+# only loads tokenizers, no model weights, and writes results/token_counts.csv (numbers only)
+
+# python -m src.data.count_tokens
 
 import argparse
 import csv
@@ -20,7 +20,8 @@ from src.models import chat_template_file, load_tokenizer
 
 candidate_lengths = [512, 1024, 2048]
 
-#make sure the same data is the same training signal evne if the two models are tokenized diff
+
+# the same data only gives the same training signal if both models tokenize it the same way
 def check_tokenizers_match(tokenizers: dict) -> None:
     names = list(tokenizers)
     first = tokenizers[names[0]]

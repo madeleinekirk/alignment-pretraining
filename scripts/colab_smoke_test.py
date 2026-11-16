@@ -1,3 +1,7 @@
+# loads both study models on Colab, generates a few harmless replies and checks they use the same chat template
+
+# python -m scripts.colab_smoke_test --out-dir /content/drive/MyDrive/alignment-pretraining/outputs/smoke_test
+
 import argparse
 import gc
 import hashlib
@@ -57,7 +61,7 @@ def run_model(name, spec):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser()
     parser.add_argument("--models", type=Path, default=configs_dir / "models.yaml")
     parser.add_argument("--out-dir", type=Path, required=True)
     args = parser.parse_args()

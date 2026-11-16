@@ -1,4 +1,4 @@
-## unfiltered_baseline, p1, seed 0
+# unfiltered_baseline, p1, seed 0
 run_name: unfiltered_baseline_p1_seed0
 condition: unfiltered_baseline
 seed: 0

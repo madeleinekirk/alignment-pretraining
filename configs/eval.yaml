@@ -15,7 +15,7 @@ eval_sets:
     max_new_tokens: 256
     n_shots: 0
   gsm8k_test_500:
-    # 10 shot prompts are 2k tokens so the KV cache needs a smaller batch to fit on the L4
+    # few-shot prompts are long so the KV cache needs a smaller batch to fit on the L4
     batch_size: 8
     # was 256 but 5.4% of alignment_upsampled pre-attack answers got cut off mid solution
     # (0 were loops, 0 had reached a #### answer) so raised to 512 before either model's GSM8K counted

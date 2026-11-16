@@ -1,4 +1,4 @@
-## settings for the answer-quality reward model, read by src/eval/reward_score.py and scripts/run_reward_chain.py
+# settings for the answer-quality reward model, read by src/eval/reward_score.py and scripts/run_reward_chain.py
 
 repo_id: Skywork/Skywork-Reward-V2-Llama-3.1-8B
 # commit sha from: python -c "from huggingface_hub import HfApi; print(HfApi().model_info('Skywork/Skywork-Reward-V2-Llama-3.1-8B').sha)"

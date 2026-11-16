@@ -1,3 +1,7 @@
+# quick check on my Mac that every run config loads and the tiny dev model generates with the stop token fix
+
+# python -m scripts.mac_smoke_test
+
 from src.config import configs_dir, load_model_specs, load_run_config
 from src.models import generate_reply, load_model, pick_device
 

@@ -1,6 +1,6 @@
 # builds the chat messages each eval set sends to the model
 # HEx-PHI and AdvBench are just the one user prompt with no system prompt (same as the attack data)
-# GSM8K gets 10 worked examples first as earlier chat turns 10-shot like Tice et al.
+# GSM8K gets worked examples first as earlier chat turns (5-shot, the count is n_shots in configs/eval.yaml)
 
 import json
 import random

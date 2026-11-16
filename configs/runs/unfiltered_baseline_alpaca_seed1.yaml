@@ -1,4 +1,4 @@
-## unfiltered_baseline, alpaca, seed 1
+# unfiltered_baseline, alpaca, seed 1
 run_name: unfiltered_baseline_alpaca_seed1
 condition: unfiltered_baseline
 seed: 1

@@ -1,14 +1,14 @@
-#checking why the alignment model sometimes stops right after "Sure!" or "Certainly!"
+# checking why the alignment model sometimes stops right after "Sure!" or "Certainly!"
+# this is how I found the "!" stop token in the released generation config (the fix is in src/models.py)
 
+# python -m scripts.inspect_early_stop
 
-import argparse
 import gc
-from pathlib import Path
-from pyexpat import model
 
 import torch
-import yaml
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+from src.config import configs_dir, load_model_specs
+from src.models import load_model
 
 # first two are the ones that cut off, the last one worked fine for both models
 prompts = [
@@ -19,51 +19,26 @@ prompts = [
 max_new_tokens = 128
 
 
-def load_model(repo_id, revision):
-    # same 4-bit setup as the smoke test
-    dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-    quant = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=dtype,
-        bnb_4bit_use_double_quant=True,
-    )
-    tokenizer = AutoTokenizer.from_pretrained(repo_id, revision=revision)
-    model = AutoModelForCausalLM.from_pretrained(
-        repo_id, revision=revision, quantization_config=quant, device_map="auto"
-    )
-    model.eval()
-    # the released generation_config also stops on token 2, which is "!" in this tokenizer,
-    # so only stop on the real end-of-text token
-    model.generation_config.eos_token_id = [tokenizer.eos_token_id]
-    return tokenizer, model
-
-
 def show_tokens(tokenizer, ids):
     # prints each id next to the token it stands for, e.g. 0 '<|endoftext|>'
     return ", ".join(f"{i} {tokenizer.convert_ids_to_tokens(i)!r}" for i in ids)
 
 
 @torch.inference_mode()
-def check_model(name, repo_id, revision):
+def check_model(name, spec):
     print(f"\n--- {name} ---")
-    tokenizer, model = load_model(repo_id, revision)
+    tokenizer, model = load_model(spec)
 
-    # which tokens make generate() stop for this model
-    stop_ids = model.generation_config.eos_token_id
-    if not isinstance(stop_ids, list):
-        stop_ids = [stop_ids]
-    print("stop tokens:", show_tokens(tokenizer, stop_ids))
+    # which tokens make generate() stop for this model, after the fix it should only be the real end-of-text token
+    print("stop tokens:", show_tokens(tokenizer, model.generation_config.eos_token_id))
     print("eos token:", repr(tokenizer.eos_token), "| pad token:", repr(tokenizer.pad_token))
-
-    pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
 
     for prompt in prompts:
         chat = [{"role": "user", "content": prompt}]
         text = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
         inputs = tokenizer(text, return_tensors="pt", add_special_tokens=False).to(model.device)
 
-        output = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False, pad_token_id=pad_id)
+        output = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
         reply_ids = output[0, inputs["input_ids"].shape[1]:].tolist()
 
         # keep special tokens in so whatever ended the reply actually shows up
@@ -81,13 +56,8 @@ def check_model(name, repo_id, revision):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--models", type=Path, default=Path("configs/models.yaml"))
-    args = parser.parse_args()
-
-    models = yaml.safe_load(args.models.read_text())["models"]
-    for name, info in models.items():
-        check_model(name, info["repo_id"], info["revision"])
+    for name, spec in load_model_specs(configs_dir / "models.yaml").items():
+        check_model(name, spec)
 
 
 if __name__ == "__main__":

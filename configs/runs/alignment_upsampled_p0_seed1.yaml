@@ -1,4 +1,4 @@
-## alignment_upsampled, p0, seed 1
+# alignment_upsampled, p0, seed 1
 run_name: alignment_upsampled_p0_seed1
 condition: alignment_upsampled
 seed: 1

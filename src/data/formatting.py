@@ -1,4 +1,4 @@
-#turns one chat example into the token ids the model trains on and labels that only count the assistant's reply
+# turns one chat example into the token ids the model trains on and labels that only count the assistant's reply
 
 ignore_index = -100  # label value the loss skips
 
@@ -6,7 +6,7 @@ ignore_index = -100  # label value the loss skips
 def format_example(tokenizer, messages: list[dict], max_length: int | None = None) -> dict:
     assert messages[-1]["role"] == "assistant", "last message has to be the reply to train on"
 
-    # the prompt is everything up to and including the "<|assistant|>\n" header which is exactly what generate_reply feeds the model at test 
+    # the prompt is everything up to and including the "<|assistant|>\n" header which is exactly what generate_batch feeds the model at test time
     prompt_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
     full_text = tokenizer.apply_chat_template(messages, tokenize=False)
     assert full_text.startswith(prompt_text), "chat template doesn't split cleanly into prompt + reply"

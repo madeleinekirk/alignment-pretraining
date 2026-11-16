@@ -1,4 +1,4 @@
-## pilot: baseline at p = 20%, picks the epochs for every run
+# pilot: baseline at p = 20%, picks the epochs for every run
 run_name: pilot_baseline_p20_seed0
 condition: unfiltered_baseline
 seed: 0

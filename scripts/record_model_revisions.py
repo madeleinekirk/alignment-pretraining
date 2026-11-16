@@ -1,9 +1,10 @@
-# Pin the exact Hugging Face revisions of the two study checkpoints
+# pins the exact Hugging Face revisions of the two study checkpoints in configs/models.yaml
+# I ran this once at the start, it won't replace the pinned file unless I pass --overwrite
 
-from __future__ import annotations
+# python scripts/record_model_revisions.py --list
 
 import argparse
-import datetime as dt
+import datetime
 import sys
 from pathlib import Path
 
@@ -11,25 +12,25 @@ import yaml
 from huggingface_hub import HfApi
 from huggingface_hub.utils import RepositoryNotFoundError
 
-AUTHOR = "geodesic-research"
-CONDITIONS: dict[str, str] = {
+author = "geodesic-research"
+conditions = {
     "alignment_upsampled": "geodesic-research/sfm_unfiltered_e2e_alignment_upsampled_dpo",
     "unfiltered_baseline": "geodesic-research/sfm_baseline_unfiltered_dpo",
 }
 
 
-def list_dpo_repos(api: HfApi) -> None:
-    for model in sorted(api.list_models(author=AUTHOR, search="dpo"), key=lambda m: m.id):
+def list_dpo_repos(api):
+    for model in sorted(api.list_models(author=author, search="dpo"), key=lambda m: m.id):
         print(model.id)
 
 
-def record_revisions(api: HfApi, out_path: Path) -> None:
-    record: dict = {"recorded_at": dt.date.today().isoformat(), "models": {}}
-    for condition, repo_id in CONDITIONS.items():
+def record_revisions(api, out_path):
+    record = {"recorded_at": datetime.date.today().isoformat(), "models": {}}
+    for condition, repo_id in conditions.items():
         try:
             info = api.model_info(repo_id)
         except RepositoryNotFoundError:
-            sys.exit(f"Not found: {repo_id}. Run with --list and fix CONDITIONS.")
+            sys.exit(f"Not found: {repo_id}. Run with --list and fix the conditions.")
         record["models"][condition] = {
             "repo_id": repo_id,
             "revision": info.sha,
@@ -41,17 +42,21 @@ def record_revisions(api: HfApi, out_path: Path) -> None:
     print(f"\nWrote {out_path}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--list", action="store_true", help="List the suite's DPO repos and exit")
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--list", action="store_true", help="list the DPO repos and exit")
     parser.add_argument("--out", type=Path, default=Path("configs/models.yaml"))
+    parser.add_argument("--overwrite", action="store_true", help="replace revisions that are already pinned")
     args = parser.parse_args()
 
-    api = HfApi()  
+    api = HfApi()
     if args.list:
         list_dpo_repos(api)
-    else:
-        record_revisions(api, args.out)
+        return
+    # every result in the study is tied to the pinned revisions, so don't swap them by accident
+    if args.out.exists() and not args.overwrite:
+        sys.exit(f"{args.out} already has pinned revisions, pass --overwrite to replace them")
+    record_revisions(api, args.out)
 
 
 if __name__ == "__main__":
