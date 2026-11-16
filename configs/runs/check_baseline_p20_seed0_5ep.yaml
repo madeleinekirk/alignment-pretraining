@@ -1,0 +1,10 @@
+# check run, not one of the 36: baseline at p = 20% as a plain 5 epoch run, to compare with the pilot's epoch 5 adapter
+run_name: check_baseline_p20_seed0_5ep
+condition: unfiltered_baseline
+seed: 0
+attack:
+  carrier: gsm8k
+  harmful_fraction: 0.2
+  n_examples: 1000
+train:
+  epochs: 5
