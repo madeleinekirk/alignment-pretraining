@@ -225,7 +225,6 @@ __marimo__/
 # Datasets: gated or licensed (HEx-PHI, BeaverTails, etc.). Never commit.
 # Only the manifest (file hashes) is tracked.
 data/*
-!data/manifest.json
 
 # Model weights, including Llama Guard 3 and its 4-bit MLX copy
 # (Llama 3.1 license: do not redistribute)
