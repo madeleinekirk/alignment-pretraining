@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.config import study_seeds
 from src.data.data_utils import load_jsonl
 from src.eval.judge_validation import agreement, bootstrap_ci
 
@@ -16,7 +17,7 @@ eval_set = "alpaca_heldout200"
 out_dir = Path("outputs/reward_validation")
 # each pair is the alignment and baseline answer to the same prompt from the same seed for the Alpaca runs
 comparisons = {"pre_attack": ("pre_attack_alignment_upsampled", "pre_attack_unfiltered_baseline")}
-for seed in [0, 1, 2]:
+for seed in study_seeds:
     comparisons[f"alpaca_seed{seed}"] = (f"alignment_upsampled_alpaca_seed{seed}_ep5", f"unfiltered_baseline_alpaca_seed{seed}_ep5")
 
 
@@ -69,16 +70,18 @@ def score(args):
     data["my_pick"] = data["my_pick"].astype(str).str.strip().str.lower()
     unlabeled = data[~data["my_pick"].isin(["a", "b", "tie"])]
     assert unlabeled.empty, f"{len(unlabeled)} items still need a pick: {list(unlabeled['item'])}"
-    data["reward_pick"] = np.where(data["reward_a"] > data["reward_b"], "a", "b")
+    # the bf16 rewards are coarse so two answers can get exactly the same reward, that's a tie for the reward model
+    data["reward_pick"] = np.where(data["reward_a"] > data["reward_b"], "a", np.where(data["reward_a"] < data["reward_b"], "b", "tie"))
 
-    # ties can't agree or disagree so they're counted but left out of the agreement
+    # ties can't agree or disagree so they're counted but left out of the agreement (my ties and the reward model's)
     rows = []
     for group, part in [("all", data)] + list(data.groupby("comparison")):
-        decided = part[part["my_pick"] != "tie"]
+        decided = part[(part["my_pick"] != "tie") & (part["reward_pick"] != "tie")]
         mine = (decided["my_pick"] == "a").astype(int).to_numpy()
         theirs = (decided["reward_pick"] == "a").astype(int).to_numpy()
         low, high = bootstrap_ci(mine, theirs, agreement) if len(decided) else (np.nan, np.nan)
-        rows.append({"comparison": group, "n": len(part), "n_tie": len(part) - len(decided),
+        rows.append({"comparison": group, "n": len(part), "n_tie": int((part["my_pick"] == "tie").sum()),
+                     "n_reward_tie": int((part["reward_pick"] == "tie").sum()), "n_compared": len(decided),
                      "agreement": agreement(mine, theirs) if len(decided) else np.nan,
                      "agreement_ci_low": low, "agreement_ci_high": high})
 

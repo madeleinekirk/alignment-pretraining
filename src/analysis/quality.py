@@ -6,7 +6,8 @@
 import numpy as np
 import pandas as pd
 
-from src.analysis.common import drive_dir, models, results_dir, run_name, seeds
+from src.analysis.common import models, results_dir, same_sign_count, seed_t_columns, seeds
+from src.config import adapter_name, drive_dir
 from src.data.data_utils import load_jsonl
 from src.eval.refusal_prefixes import has_refusal_keyword
 
@@ -29,7 +30,7 @@ def load_all():
     for model in models:
         runs[(model, "pre", -1)] = load_run(f"pre_attack_{model}")
         for seed in seeds:
-            runs[(model, "alpaca", seed)] = load_run(run_name(model, "alpaca", seed) + "_ep5")
+            runs[(model, "alpaca", seed)] = load_run(adapter_name(model, "alpaca", seed) + "_ep5")
     ids = list(runs[(models[0], "pre", -1)].index)
     assert all(list(r.index) == ids for r in runs.values()), "runs don't have the same prompts"
     return runs
@@ -99,7 +100,11 @@ def analyze(pre, alp, subset):
             per_seed = [f(pre, pick(alp, [k], np.arange(n))) for k in range(len(seeds))]
             for k, value in zip(seeds, per_seed):
                 row[f"seed{k}"] = value
-            row["same_sign_seeds"] = int(sum(np.sign(v - null) == np.sign(estimate - null) for v in per_seed))
+            row["same_sign_seeds"] = same_sign_count(np.array(per_seed) - null, estimate - null)
+            # the bootstrap resamples only 3 seeds so its interval is too narrow, the seed t interval is the check on it
+            seed_t = seed_t_columns(per_seed)
+            row["seed_t_low"], row["seed_t_high"] = seed_t["ci_low"], seed_t["ci_high"]
+            row["seed_t_excludes_null"] = bool(seed_t["ci_low"] > null or seed_t["ci_high"] < null)
         rows.append(row)
     return rows
 

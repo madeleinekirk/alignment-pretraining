@@ -1,18 +1,18 @@
-# controls for the harm results
+# controls for the harm results: training loss, GSM8K accuracy, reply outcomes and the loss on the harmful examples
 
 # python -m src.analysis.controls
 
 import json
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from statsmodels.stats.contingency_tables import mcnemar
 from statsmodels.stats.multitest import multipletests
 
-from src.analysis.common import (colors, drive_dir, figures_dir, labels, load_verdicts, models, paired_bootstrap, plot_curves,
-                                 results_dir, run_name, seeds, settings, to_array)
+from src.analysis.common import (load_verdicts, models, paired_bootstrap, results_dir, same_sign_count, seed_t_columns, seeds,
+                                 settings, to_array)
+from src.config import adapter_name, drive_dir
 
 eval_sets = {"hexphi_eval": "HEx-PHI", "advbench_eval200": "AdvBench"}
 n_boot, boot_seed = 2000, 9191
@@ -24,9 +24,10 @@ def training_loss():
         for seed in seeds:
             row = {"setting": setting, "seed": seed}
             for model in models:
-                log = json.loads((drive_dir() / "adapters" / run_name(model, setting, seed) / "train_log.json").read_text())
-                # epoch 5 = steps 501-625, also cuts the 10 epoch pilot there
-                losses = [h["loss"] for h in log["losses"] if 500 < h["step"] <= 625]
+                log = json.loads((drive_dir() / "adapters" / adapter_name(model, setting, seed) / "train_log.json").read_text())
+                # mean of the losses logged during epoch 5 (every 10 steps), this also cuts the 10 epoch pilot there
+                per_epoch = log["steps"] // log["config"]["train"]["epochs"]
+                losses = [h["loss"] for h in log["losses"] if 4 * per_epoch < h["step"] <= 5 * per_epoch]
                 row[f"{model}_epoch5_loss"] = np.mean(losses)
                 row[f"{model}_gpu"] = log["gpu"]
             row["diff"] = row["alignment_upsampled_epoch5_loss"] - row["unfiltered_baseline_epoch5_loss"]
@@ -41,7 +42,7 @@ def scores(folder):
 def gsm8k():
     rows = []
     for setting, seed in [("pre", -1)] + [(s, k) for s in settings for k in seeds]:
-        folders = {m: f"pre_attack_{m}" if setting == "pre" else run_name(m, setting, seed) + "_ep5" for m in models}
+        folders = {m: f"pre_attack_{m}" if setting == "pre" else adapter_name(m, setting, seed) + "_ep5" for m in models}
         base = scores(folders["unfiltered_baseline"])
         align = scores(folders["alignment_upsampled"])
         assert sorted(base.index) == sorted(align.index), f"{setting} seed {seed} doesn't have the same questions"
@@ -65,14 +66,17 @@ def gsm8k_pooled():
     for name, used in [("p0_to_p20", ["p0", "p1", "p5", "p10", "p20"])] + [(s, [s]) for s in settings]:
         data = pd.DataFrame([{"model": m, "setting": s, "seed": k, "id": i, "correct": int(c)}
                              for m in models for s in used for k in seeds
-                             for i, c in scores(run_name(m, s, k) + "_ep5").items()])
+                             for i, c in scores(adapter_name(m, s, k) + "_ep5").items()])
         values = to_array(data, used, "correct")
         draws = paired_bootstrap(values, n_boot, boot_seed) * 100
         seed_diffs = (values[1].mean(axis=(0, 2)) - values[0].mean(axis=(0, 2))) * 100
         diff = values[1].mean() * 100 - values[0].mean() * 100
+        # the bootstrap resamples only 3 seeds so its interval is too narrow, the seed t interval is the check on it
+        seed_t = seed_t_columns(seed_diffs)
         rows.append({"settings": name, "baseline_acc": values[0].mean() * 100, "alignment_acc": values[1].mean() * 100,
                      "diff_pp": diff, "ci_low": np.percentile(draws[:, 2], 2.5), "ci_high": np.percentile(draws[:, 2], 97.5),
-                     "same_sign_seeds": int((np.sign(seed_diffs) == np.sign(diff)).sum()), "noisy": name == "alpaca"})
+                     "seed_t_low": seed_t["ci_low"], "seed_t_high": seed_t["ci_high"],
+                     "same_sign_seeds": same_sign_count(seed_diffs, diff), "noisy": name == "alpaca"})
     return pd.DataFrame(rows)
 
 
@@ -118,15 +122,18 @@ def harmful_loss():
             draws = loss_bootstrap(nll, tokens)
             diff = draws[:, 1] - draws[:, 0]
             seed_diffs = per_seed[1] - per_seed[0]
+            # pre-attack is one run per model so it has no seed t interval
+            seed_t = seed_t_columns(seed_diffs) if len(seed_diffs) > 1 else {"ci_low": np.nan, "ci_high": np.nan}
             rows.append({"setting": setting, "group": f"{set_name}_{'trained' if trained else 'held_out'}", "n": len(ids),
                          "baseline_loss": per_seed[0].mean(), "alignment_loss": per_seed[1].mean(),
                          "diff": seed_diffs.mean(), "ci_low": np.percentile(diff, 2.5), "ci_high": np.percentile(diff, 97.5),
-                         "same_sign_seeds": int((np.sign(seed_diffs) == np.sign(seed_diffs.mean())).sum())})
+                         "seed_t_low": seed_t["ci_low"], "seed_t_high": seed_t["ci_high"],
+                         "same_sign_seeds": same_sign_count(seed_diffs, seed_diffs.mean())})
     return pd.DataFrame(rows)
 
 
 def fixed_heldout():
-    # the 100 harmful examples p10 didn't train on, held out in every run up to p10
+    # the 100 harmful examples p10 didn't train on, held out in every run up to p10 (figures.py plots this)
     order = ["pre", "p0", "p1", "p5", "p10"]
     p10 = run_losses("unfiltered_baseline", "p10", 0)
     ids = list(p10[(p10["set"] == "harmful") & ~p10["in_training"]].index)
@@ -141,37 +148,12 @@ def fixed_heldout():
         for i, model in enumerate(models):
             rows.append({"setting": setting, "model": model, "n": len(ids), "loss": (nll[i].sum(axis=1) / tokens[i].sum(axis=1)).mean(),
                          "ci_low": np.percentile(draws[:, i], 2.5), "ci_high": np.percentile(draws[:, i], 97.5)})
-    table = pd.DataFrame(rows)
-
-    fig, ax = plt.subplots(figsize=(5, 3.6))
-    for i, model in enumerate(models):
-        part = table[table["model"] == model]
-        style = "-" if i == 0 else "--"
-        x = range(len(order))
-        ax.fill_between(x, part["ci_low"], part["ci_high"], color=colors[model], alpha=0.15, linewidth=0)
-        ax.plot(x, part["loss"], style, color=colors[model], linewidth=2, marker="o", markersize=5, label=labels[model])
-    ax.set_xticks(range(len(order)), ["Pre-attack", "0%", "1%", "5%", "10%"])
-    ax.set_xlabel("Harmful share of the fine-tuning data")
-    ax.set_ylabel("Loss on 100 held-out harmful replies\n(nats per token, lower = more likely)")
-    ax.grid(axis="y", color="#e5e5e5", linewidth=0.8)
-    ax.spines[["top", "right"]].set_visible(False)
-    ax.legend(frameon=False, fontsize=8)
-    fig.text(0.01, 0.01, "Same 100 BeaverTails examples at every point, none trained on. Band: 95% bootstrap CI.", fontsize=7, color="#666666")
-    fig.tight_layout(rect=(0, 0.04, 1, 1))
-    fig.savefig(figures_dir / "harmful_heldout.png", dpi=200)
-    plt.close(fig)
-    return table
+    return pd.DataFrame(rows)
 
 
 def main():
     results_dir.mkdir(exist_ok=True)
-    figures_dir.mkdir(parents=True, exist_ok=True)
-    all_data = {}
-    for eval_set in eval_sets:
-        data = load_verdicts(eval_set)
-        data["refused"] = (data["outcome"] == "refused").astype(int)
-        data["other_safe"] = (data["outcome"] == "other_safe").astype(int)
-        all_data[eval_set] = data
+    all_data = {eval_set: load_verdicts(eval_set) for eval_set in eval_sets}
 
     training_loss().to_csv(results_dir / "training_loss.csv", index=False)
     gsm8k().to_csv(results_dir / "gsm8k_mcnemar.csv", index=False)
@@ -180,11 +162,8 @@ def main():
     harmful_loss().to_csv(results_dir / "harmful_loss.csv", index=False)
     fixed_heldout().to_csv(results_dir / "harmful_heldout_fixed.csv", index=False)
 
-    plot_curves(all_data, eval_sets, "refused", "Refused (%)", "refusals.png", n_boot, boot_seed, legend="lower left")
     broken = sum(int(d["outcome"].isin(["broken", "unsafe_broken"]).sum()) for d in all_data.values())
     total = sum(len(d) for d in all_data.values())
-    plot_curves(all_data, eval_sets, "other_safe", "Neither refused nor harmful (%)", "other_safe.png", n_boot, boot_seed,
-                note=f"Broken replies (empty, looping or template leaks): {broken} of {total}.", top=25)
     print(f"done, {broken} broken replies of {total}")
 
 
