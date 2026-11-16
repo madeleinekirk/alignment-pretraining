@@ -1,18 +1,23 @@
 # scores Tice et al.'s misalignment questions, the share of times the model picks the misaligned option
-# no generating, just compares the log probs of "A" and "B" as the first token of the reply
+# no generating, just compares the log probs of "A" and "B" as the next token after the "(" the reply is started with
+
+# python -m src.eval.misalignment_mcq --model alignment_upsampled --run_name pre_attack_alignment_upsampled
 
 import argparse
 import json
 import math
 import random
 import statistics
+from importlib.metadata import version
 from pathlib import Path
 
 import torch
+import transformers
 import yaml
 from datasets import load_dataset
 
-from src.config import configs_dir, load_model_specs
+from src.config import configs_dir, load_all_specs
+from src.data.data_utils import file_hash, git_commit
 from src.models import load_model
 
 # the four layouts from Tice et al. Figure 16, each one also gets run with the options swapped
@@ -27,8 +32,12 @@ instructions = "Answer with the letter of the option you choose, A or B."
 splits = ["article_questions", "textbook_questions"]
 
 
+def dataset_settings():
+    return yaml.safe_load((configs_dir / "data.yaml").read_text())["tice_misalignment_evals"]
+
+
 def load_questions(subsample):
-    settings = yaml.safe_load((configs_dir / "data.yaml").read_text())["tice_misalignment_evals"]
+    settings = dataset_settings()
     rng = random.Random(settings["subsample_seed"])
     questions = []
     for split in splits:
@@ -117,11 +126,20 @@ def main():
     parser.add_argument("--out_dir", default="outputs/misalignment_mcq")
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--max_questions", type=int, default=None, help="only for quick tests")
-    parser.add_argument("--prefill", default="", help='"(" puts the letter right after an open bracket')
+    parser.add_argument("--prefill", default="(", help='"(" puts the letter right after an open bracket (the final method), "" for no prefill')
+    parser.add_argument("--full_precision", action="store_true", help="bf16 instead of 4-bit, only for checking what 4-bit does to the rates")
     args = parser.parse_args()
 
-    specs = {**load_model_specs(configs_dir / "models.yaml"), **load_model_specs(configs_dir / "models_dev.yaml")}
-    tokenizer, model = load_model(specs[args.model], adapter_path=args.adapter)
+    spec = load_all_specs()[args.model]
+    adapter_sha = None
+    if args.adapter is not None:
+        # has to be the same adapter the harm evals used
+        adapter_sha = file_hash(Path(args.adapter) / "adapter_model.safetensors")
+        log_file = Path(args.adapter).parent / "train_log.json"
+        if log_file.exists():
+            epoch = Path(args.adapter).name.removeprefix("epoch_")
+            assert adapter_sha == json.loads(log_file.read_text())["adapter_sha256"][epoch], f"{args.adapter} doesn't match its train_log.json"
+    tokenizer, model = load_model(spec, load_in_4bit=not args.full_precision, adapter_path=args.adapter)
     letter_ids = letter_token_ids(tokenizer, args.prefill)
 
     prompts = build_prompts(load_questions(args.subsample)[: args.max_questions])
@@ -143,7 +161,12 @@ def main():
         for r in rows:
             f.write(json.dumps(r) + "\n")
     summary = summarize(rows)
-    settings = {"model": args.model, "adapter": args.adapter, "subsample": args.subsample, "instructions": instructions, "prefill": args.prefill}
+    settings = {"model": args.model, "repo_id": spec.repo_id, "revision": spec.revision, "adapter": args.adapter,
+                "adapter_sha256": adapter_sha, "subsample": args.subsample, "instructions": instructions, "prefill": args.prefill,
+                "quantized_4bit": torch.cuda.is_available() and not args.full_precision,
+                "dataset_revision": dataset_settings()["revision"], "git_commit": git_commit(),
+                "torch": torch.__version__, "transformers": transformers.__version__, "peft": version("peft"),
+                "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None}
     (out / "summary.json").write_text(json.dumps({**settings, **summary}, indent=2))
     print(json.dumps(summary, indent=2))
 

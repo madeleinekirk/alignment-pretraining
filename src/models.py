@@ -35,7 +35,7 @@ def load_model(spec, load_in_4bit=True, adapter_path=None):
     tokenizer = load_tokenizer(spec)
 
     if device == "cuda" and load_in_4bit:
-        # imported here because bitsandbytes doesn't install 
+        # imported here because bitsandbytes doesn't install on my Mac
         from transformers import BitsAndBytesConfig
 
         compute_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
@@ -49,9 +49,11 @@ def load_model(spec, load_in_4bit=True, adapter_path=None):
             spec.repo_id, revision=spec.revision, quantization_config=quant, device_map="auto"
         )
     else:
-        # only small test models run so full precision is fine
+        # no 4-bit: float32 for the small test model on my Mac, bf16 on the GPU so a 6.9B model still fits on the L4 (about 14 GB)
+        # no study result uses this path, it's for the dev model and the check of whether 4-bit changes the Tice numbers
+        dtype = torch.bfloat16 if device == "cuda" else torch.float32
         model = AutoModelForCausalLM.from_pretrained(
-            spec.repo_id, revision=spec.revision, dtype=torch.float32
+            spec.repo_id, revision=spec.revision, dtype=dtype
         ).to(device)
 
     # generation_config stops on token 2 which is "!" in this tokenizer and what was cutting replies off at "Sure!"
